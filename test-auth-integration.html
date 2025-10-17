@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Integração - Autenticação Esquads</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de Integração - Autenticação Esquads</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Status da Conexão</h3>
+            <p id="connection-status">Verificando conexão...</p>
+            <button onclick="testConnection()">Testar Conexão</button>
+        </div>
+
+        <div class="test-section">
+            <h3>👤 Teste de Registro</h3>
+            <input type="email" id="register-email" placeholder="Email para teste" value="">
+            <input type="password" id="register-password" placeholder="Senha" value="MinhaSenh@123">
+            <input type="text" id="register-name" placeholder="Nome completo" value="Usuário Teste">
+            <button onclick="testRegister()">Registrar Usuário</button>
+            <div id="register-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔑 Teste de Login</h3>
+            <input type="email" id="login-email" placeholder="Email para login" value="">
+            <input type="password" id="login-password" placeholder="Senha" value="MinhaSenh@123">
+            <button onclick="testLogin()">Fazer Login</button>
+            <button onclick="testLogout()">Fazer Logout</button>
+            <div id="login-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Estado Atual</h3>
+            <button onclick="checkAuthState()">Verificar Estado</button>
+            <button onclick="checkTables()">Verificar Tabelas</button>
+            <div id="state-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 Teste de Sincronização</h3>
+            <button onclick="testSync()">Testar Sincronização</button>
+            <div id="sync-log" class="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        // Configuração do Supabase
+        const supabaseUrl = 'https://anyjcglrdkfkfdylcwxo.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFueWpjZ2xyZGtma2ZkeWxjd3hvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5MDcyNjksImV4cCI6MjA3NTQ4MzI2OX0.UwejUJkbtdVKG4gvWO78pYMZXJaBf5FJRb9NXpa6gLM';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // Funções de log
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            element.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '';
+        }
+
+        // Gerar email único para teste
+        function generateTestEmail() {
+            return `teste${Date.now()}@exemplo.com`;
+        }
+
+        // Teste de conexão
+        window.testConnection = async function() {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.textContent = 'Testando conexão...';
+            
+            try {
+                const { data, error } = await supabase.from('users').select('count').limit(1);
+                
+                if (error) {
+                    statusEl.textContent = `❌ Erro na conexão: ${error.message}`;
+                    statusEl.className = 'error';
+                } else {
+                    statusEl.textContent = '✅ Conexão com Supabase estabelecida!';
+                    statusEl.className = 'success';
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ Erro: ${error.message}`;
+                statusEl.className = 'error';
+            }
+        };
+
+        // Teste de registro
+        window.testRegister = async function() {
+            clearLog('register-log');
+            
+            const email = document.getElementById('register-email').value || generateTestEmail();
+            const password = document.getElementById('register-password').value;
+            const fullName = document.getElementById('register-name').value;
+            
+            document.getElementById('register-email').value = email;
+            
+            log('register-log', `Iniciando registro para: ${email}`);
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: fullName,
+                            role: 'student'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    log('register-log', `Erro no registro: ${error.message}`, 'error');
+                    return;
+                }
+                
+                log('register-log', 'Usuário registrado com sucesso!', 'success');
+                log('register-log', `ID do usuário: ${data.user?.id}`);
+                
+                // Aguardar trigger funcionar
+                log('register-log', 'Aguardando sincronização automática...');
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Verificar se foi criado nas tabelas
+                if (data.user) {
+                    await checkUserInTables(data.user.id, 'register-log');
+                }
+                
+            } catch (error) {
+                log('register-log', `Erro: ${error.message}`, 'error');
+            }
+        };
+
+        // Teste de login
+        window.testLogin = async function() {
+            clearLog('login-log');
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email) {
+                log('login-log', 'Por favor, insira um email', 'error');
+                return;
+            }
+            
+            log('login-log', `Tentando fazer login com: ${email}`);
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    log('login-log', `Erro no login: ${error.message}`, 'error');
+                    return;
+                }
+                
+                log('login-log', 'Login realizado com sucesso!', 'success');
+                log('login-log', `Usuário logado: ${data.user?.email}`);
+                
+                // Verificar dados nas tabelas
+                if (data.user) {
+                    await checkUserInTables(data.user.id, 'login-log');
+                }
+                
+            } catch (error) {
+                log('login-log', `Erro: ${error.message}`, 'error');
+            }
+        };
+
+        // Teste de logout
+        window.testLogout = async function() {
+            log('login-log', 'Fazendo logout...');
+            
+            try {
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    log('login-log', `Erro no logout: ${error.message}`, 'error');
+                } else {
+                    log('login-log', 'Logout realizado com sucesso!', 'success');
+                }
+            } catch (error) {
+                log('login-log', `Erro: ${error.message}`, 'error');
+            }
+        };
+
+        // Verificar estado de autenticação
+        window.checkAuthState = async function() {
+            clearLog('state-log');
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (user) {
+                    log('state-log', 'Usuário autenticado:', 'success');
+                    log('state-log', `Email: ${user.email}`);
+                    log('state-log', `ID: ${user.id}`);
+                    log('state-log', `Metadata: ${JSON.stringify(user.user_metadata, null, 2)}`);
+                } else {
+                    log('state-log', 'Nenhum usuário autenticado');
+                }
+                
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    log('state-log', 'Sessão ativa encontrada', 'success');
+                } else {
+                    log('state-log', 'Nenhuma sessão ativa');
+                }
+                
+            } catch (error) {
+                log('state-log', `Erro: ${error.message}`, 'error');
+            }
+        };
+
+        // Verificar tabelas
+        window.checkTables = async function() {
+            log('state-log', 'Verificando acesso às tabelas...');
+            
+            try {
+                // Testar tabela users
+                const { data: usersData, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(3);
+                
+                if (usersError) {
+                    log('state-log', `Erro na tabela users: ${usersError.message}`, 'error');
+                } else {
+                    log('state-log', `Tabela users: ${usersData.length} registros encontrados`, 'success');
+                }
+                
+                // Testar tabela user_profiles
+                const { data: profilesData, error: profilesError } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .limit(3);
+                
+                if (profilesError) {
+                    log('state-log', `Erro na tabela user_profiles: ${profilesError.message}`, 'error');
+                } else {
+                    log('state-log', `Tabela user_profiles: ${profilesData.length} registros encontrados`, 'success');
+                }
+                
+                // Testar tabela user_points
+                const { data: pointsData, error: pointsError } = await supabase
+                    .from('user_points')
+                    .select('*')
+                    .limit(3);
+                
+                if (pointsError) {
+                    log('state-log', `Erro na tabela user_points: ${pointsError.message}`, 'error');
+                } else {
+                    log('state-log', `Tabela user_points: ${pointsData.length} registros encontrados`, 'success');
+                }
+                
+            } catch (error) {
+                log('state-log', `Erro geral: ${error.message}`, 'error');
+            }
+        };
+
+        // Verificar usuário nas tabelas
+        async function checkUserInTables(userId, logElementId) {
+            log(logElementId, 'Verificando usuário nas tabelas...');
+            
+            // Verificar tabela users
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+            
+            if (userError) {
+                if (userError.code === 'PGRST116') {
+                    log(logElementId, 'Usuário NÃO encontrado na tabela users', 'error');
+                } else {
+                    log(logElementId, `Erro ao buscar na tabela users: ${userError.message}`, 'error');
+                }
+            } else {
+                log(logElementId, 'Usuário encontrado na tabela users!', 'success');
+                log(logElementId, `Dados: ${JSON.stringify(userData, null, 2)}`);
+            }
+            
+            // Verificar tabela user_profiles
+            const { data: profileData, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+            
+            if (profileError) {
+                if (profileError.code === 'PGRST116') {
+                    log(logElementId, 'Perfil NÃO encontrado na tabela user_profiles', 'error');
+                } else {
+                    log(logElementId, `Erro ao buscar na tabela user_profiles: ${profileError.message}`, 'error');
+                }
+            } else {
+                log(logElementId, 'Perfil encontrado na tabela user_profiles!', 'success');
+                log(logElementId, `Dados: ${JSON.stringify(profileData, null, 2)}`);
+            }
+            
+            // Verificar tabela user_points
+            const { data: pointsData, error: pointsError } = await supabase
+                .from('user_points')
+                .select('*')
+                .eq('user_id', userId)
+                .single();
+            
+            if (pointsError) {
+                if (pointsError.code === 'PGRST116') {
+                    log(logElementId, 'Pontos NÃO encontrados na tabela user_points', 'error');
+                } else {
+                    log(logElementId, `Erro ao buscar na tabela user_points: ${pointsError.message}`, 'error');
+                }
+            } else {
+                log(logElementId, 'Pontos encontrados na tabela user_points!', 'success');
+                log(logElementId, `Dados: ${JSON.stringify(pointsData, null, 2)}`);
+            }
+        }
+
+        // Teste de sincronização
+        window.testSync = async function() {
+            clearLog('sync-log');
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (!user) {
+                    log('sync-log', 'Nenhum usuário logado para sincronizar', 'error');
+                    return;
+                }
+                
+                log('sync-log', `Testando sincronização para usuário: ${user.id}`);
+                
+                // Simular sincronização manual
+                const userData = {
+                    id: user.id,
+                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário',
+                    role: user.user_metadata?.role || 'student',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                // Tentar inserir/atualizar na tabela users
+                const { data: userResult, error: userError } = await supabase
+                    .from('users')
+                    .upsert(userData, { onConflict: 'id' })
+                    .select()
+                    .single();
+                
+                if (userError) {
+                    log('sync-log', `Erro ao sincronizar tabela users: ${userError.message}`, 'error');
+                } else {
+                    log('sync-log', 'Sincronização da tabela users bem-sucedida!', 'success');
+                }
+                
+                // Tentar inserir/atualizar na tabela user_profiles
+                const profileData = {
+                    user_id: user.id,
+                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuário',
+                    role: user.user_metadata?.role || 'student',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                const { data: profileResult, error: profileError } = await supabase
+                    .from('user_profiles')
+                    .upsert(profileData, { onConflict: 'user_id' })
+                    .select()
+                    .single();
+                
+                if (profileError) {
+                    log('sync-log', `Erro ao sincronizar tabela user_profiles: ${profileError.message}`, 'error');
+                } else {
+                    log('sync-log', 'Sincronização da tabela user_profiles bem-sucedida!', 'success');
+                }
+                
+                // Garantir pontos do usuário
+                const { data: pointsResult, error: pointsError } = await supabase
+                    .from('user_points')
+                    .upsert({
+                        user_id: user.id,
+                        total_points: 0,
+                        level: 1,
+                        experience_points: 0
+                    }, { onConflict: 'user_id', ignoreDuplicates: true });
+                
+                if (pointsError) {
+                    log('sync-log', `Erro ao sincronizar pontos: ${pointsError.message}`, 'error');
+                } else {
+                    log('sync-log', 'Sincronização de pontos bem-sucedida!', 'success');
+                }
+                
+            } catch (error) {
+                log('sync-log', `Erro na sincronização: ${error.message}`, 'error');
+            }
+        };
+
+        // Inicializar
+        window.addEventListener('load', () => {
+            testConnection();
+            
+            // Preencher emails de teste
+            document.getElementById('register-email').value = generateTestEmail();
+            document.getElementById('login-email').value = document.getElementById('register-email').value;
+        });
+    </script>
+</body>
+</html>

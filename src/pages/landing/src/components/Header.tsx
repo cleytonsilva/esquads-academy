@@ -1,0 +1,82 @@
+import { Menu } from 'lucide-react';
+
+import logo from '../../public/images/esquads2.png'
+
+export default function Header() {
+  return (
+    <>
+      {/* Top Accent - positioned absolutely to not affect header positioning */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-200 via-sky-200 to-emerald-200 animate-pulse z-[60]" style={{animationDuration: '6s'}}></div>
+      
+      <header className="sticky top-1 z-50 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/80 border-b border-slate-200/70">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            {/* Logo */}
+            <a href="/" className="inline-flex items-center gap-3 group">
+              <img
+                src={logo}
+                alt="Esquads Logo"
+                className="h-12 w-auto object-contain flex-shrink-0 transition-opacity duration-200"
+                loading="eager"
+                style={{ imageRendering: 'crisp-edges' }}
+              />
+              <span className="text-slate-900 text-lg md:text-xl font-semibold tracking-tight">Esquads</span>
+            </a>
+
+            {/* Desktop Nav */}
+            <nav className="hidden lg:flex items-center gap-8">
+              <a href="#cursos" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">Cursos</a>
+              <a href="#missoes" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">Missões</a>
+              <a href="#planos" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">Planos</a>
+              <a href="#certificacoes" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">Certificações</a>
+              <a href="#empresas" className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">Empresas</a>
+            </nav>
+
+            {/* Actions */}
+            <div className="hidden lg:flex items-center gap-3">
+              <a href="/login" className="text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 rounded-md transition-all hover:-translate-y-0.5 hover:shadow-sm">Entrar</a>
+              <a href="/register" className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                  <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                  <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                  <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                </svg>
+                Criar conta
+              </a>
+            </div>
+
+            {/* Mobile */}
+            <details className="lg:hidden group relative">
+              <summary className="list-none inline-flex items-center justify-center h-10 w-10 rounded-md border border-slate-300 hover:border-slate-400 bg-white shadow-sm cursor-pointer transition-all hover:shadow-sm hover:-translate-y-0.5">
+                <Menu className="w-5 h-5 text-slate-700" />
+              </summary>
+              <div className="absolute right-0 mt-3 w-[88vw] max-w-xs rounded-lg border border-slate-200 bg-white shadow-xl p-2 transition-all">
+                <div className="flex flex-col">
+                  <a href="#cursos" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Cursos</a>
+                  <a href="#missoes" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Missões</a>
+                  <a href="#planos" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Planos</a>
+                  <a href="#certificacoes" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Certificações</a>
+                  <a href="#empresas" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Empresas</a>
+                  <div className="my-2 border-t border-slate-200"></div>
+                  <a href="/login" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Entrar</a>
+                  <a href="/register" className="mt-1 inline-flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-all hover:-translate-y-0.5 hover:shadow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                    </svg>
+                    Criar conta
+                  </a>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </header>
+    </>
+  );
+}
+
+
