@@ -1,17 +1,14 @@
 import Reports from '@/pages/admin/Reports';
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoleVerification } from '@/hooks/useRoleVerification';
-import { RoleProtectedRoute, AdminProtectedRoute, StudentProtectedRoute, AuthProtectedRoute, PublicRoute } from '@/components/auth/RoleProtectedRoute';
-import { navigationMiddleware } from '@/middleware/navigationMiddleware';
+import { AdminProtectedRoute, StudentProtectedRoute, PublicRoute } from '@/components/auth/RoleProtectedRoute';
 import { ROUTES } from '@/utils/constants';
-import { supabase } from '@/integrations/supabase/client';
 
 // Layouts
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { StudentLayout } from '@/layouts/StudentLayout';
-// Removed InstructorLayout routes
 import { AdminLayout } from '@/layouts/AdminLayout';
 
 // Auth Pages
@@ -22,7 +19,6 @@ import { ResetPassword } from '@/pages/auth/ResetPassword';
 
 // Dashboard Pages
 import { StudentDashboard } from '@/pages/student/Dashboard';
-// Removed instructor pages
 import AdminDashboard from '@/pages/admin/Dashboard';
 
 // Student Pages
@@ -92,68 +88,54 @@ const NavigationManager: React.FC = () => {
     return publicRoutes.some(route => path === route || path.startsWith('/certificate/verify/'));
   };
 
-  // CORREÇÃO 1: Lógica de redirecionamento mais simples e confiável
   useEffect(() => {
     const currentPath = location.pathname;
     const isPublic = isPublicRoute(currentPath);
 
-    // Não fazer nada em rotas públicas
     if (isPublic) {
       return;
     }
 
-    // Aguardar carregamento completo
     if (loading || roleLoading || !isVerified) {
       return;
     }
 
-    // Se não há usuário, redirecionar para login
     if (!user) {
       console.log('🔄 No user, redirecting to login');
       navigate(ROUTES.LOGIN, { replace: true });
       return;
     }
 
-    // Se não há role verificada, aguardar
     if (!role) {
       return;
     }
 
-    // CORREÇÃO 2: Verificação de rota baseada em role mais precisa
     const isAdminRoute = currentPath.startsWith('/admin');
     const isStudentRoute = currentPath.startsWith('/student');
 
-    // Redirecionar admin para área correta
     if (role === 'admin' && !isAdminRoute) {
       console.log('🔄 Admin user, redirecting to admin area');
       navigate('/admin', { replace: true });
       return;
     }
 
-    // Redirecionar student para área correta
     if (role === 'student' && !isStudentRoute) {
       console.log('🔄 Student user, redirecting to student area');
       navigate('/student', { replace: true });
       return;
     }
 
-    // Bloquear student de acessar área admin
     if (role === 'student' && isAdminRoute) {
       console.log('🚫 Student trying to access admin area, redirecting to student');
       navigate('/student', { replace: true });
-      return;
     }
-
   }, [location.pathname, user, role, loading, roleLoading, isVerified, navigate]);
 
-  // CORREÇÃO 3: Spinner mais inteligente - só mostrar quando realmente necessário
   const shouldShowSpinner = () => {
     const isPublic = isPublicRoute(location.pathname);
-    
-    // Nunca mostrar spinner em rotas públicas
+
     if (isPublic) return false;
-    
-    // Mostrar spinner apenas se está carregando autenticação OU role E tem usuário
+
     return (loading || (roleLoading && user)) && !isVerified;
   };
 
@@ -171,6 +153,22 @@ const NavigationManager: React.FC = () => {
 
   return <AppRoutes />;
 };
+
+const StudentSection: React.FC = () => (
+  <StudentProtectedRoute>
+    <StudentLayout>
+      <Outlet />
+    </StudentLayout>
+  </StudentProtectedRoute>
+);
+
+const AdminSection: React.FC = () => (
+  <AdminProtectedRoute>
+    <AdminLayout>
+      <Outlet />
+    </AdminLayout>
+  </AdminProtectedRoute>
+);
 
 /**
  * Componente com as rotas da aplicação
@@ -192,7 +190,7 @@ const AppRoutes: React.FC = () => {
           <CertificateVerification />
         </PublicRoute>
       } />
-      
+
       {/* Auth Routes */}
       <Route path={ROUTES.LOGIN} element={
         <PublicRoute>
@@ -224,257 +222,48 @@ const AppRoutes: React.FC = () => {
       } />
 
       {/* Student Routes */}
-      <Route path={ROUTES.STUDENT_DASHBOARD} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentDashboard />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_COURSES} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentCourses />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_COURSE_DETAIL} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentCourseDetail />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_GAMIFICATION} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentGamification />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path="/student/certificates" element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentCertificates />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_MISSIONS} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentMissions />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_PATHS} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentPaths />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_PATH_DETAIL} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentPathDetail />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path="/student/missions/:id" element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentMission />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_PROFILE} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentProfile />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_ACHIEVEMENTS} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentAchievements />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      {/* Compat: rota alternativa para 'archivments' */}
-      <Route path={'/student/archivments'} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentAchievements />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_LEADERBOARD} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentLeaderboard />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-
-      <Route path={ROUTES.STUDENT_EXAMS} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentExams />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-      <Route path={ROUTES.STUDENT_SOCIAL} element={
-        <StudentProtectedRoute>
-          <StudentLayout>
-            <StudentSocial />
-          </StudentLayout>
-        </StudentProtectedRoute>
-      } />
-
-      {/* Test Routes - Development Only */}
-      {process.env.NODE_ENV === 'development' && (
-        <Route path="/test/missions" element={
-          <StudentProtectedRoute>
-            <StudentLayout>
-              <TestMissions />
-            </StudentLayout>
-          </StudentProtectedRoute>
-        } />
-      )}
-
-      {/* Admin Course Wizard */}
-      <Route path="/admin/courses/wizard" element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <CourseCreationWizard />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-
-      <Route path={ROUTES.ADMIN_EXAMS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminExams />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
+      <Route element={<StudentSection />}>
+        <Route path={ROUTES.STUDENT_DASHBOARD} element={<StudentDashboard />} />
+        <Route path={ROUTES.STUDENT_COURSES} element={<StudentCourses />} />
+        <Route path={ROUTES.STUDENT_COURSE_DETAIL} element={<StudentCourseDetail />} />
+        <Route path={ROUTES.STUDENT_GAMIFICATION} element={<StudentGamification />} />
+        <Route path="/student/certificates" element={<StudentCertificates />} />
+        <Route path={ROUTES.STUDENT_MISSIONS} element={<StudentMissions />} />
+        <Route path={ROUTES.STUDENT_PATHS} element={<StudentPaths />} />
+        <Route path={ROUTES.STUDENT_PATH_DETAIL} element={<StudentPathDetail />} />
+        <Route path="/student/missions/:id" element={<StudentMission />} />
+        <Route path={ROUTES.STUDENT_PROFILE} element={<StudentProfile />} />
+        <Route path={ROUTES.STUDENT_ACHIEVEMENTS} element={<StudentAchievements />} />
+        <Route path={'/student/archivments'} element={<StudentAchievements />} />
+        <Route path={ROUTES.STUDENT_LEADERBOARD} element={<StudentLeaderboard />} />
+        <Route path={ROUTES.STUDENT_CERTIFICATIONS} element={<StudentExams />} />
+        <Route path={ROUTES.STUDENT_SOCIAL} element={<StudentSocial />} />
+        {process.env.NODE_ENV === 'development' && (
+          <Route path="/test/missions" element={<TestMissions />} />
+        )}
+      </Route>
 
       {/* Admin Routes */}
-      <Route path={ROUTES.ADMIN_DASHBOARD} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminDashboard />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_COURSES} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminCourses />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_BADGES} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminBadges />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_ACHIEVEMENTS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminAchievements />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_PATHS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminPaths />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_MISSIONS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminMissions />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path="/admin/certificates/designer" element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <CertificateDesigner />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_USERS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminUsers />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_ROLES} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminRoles />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_ANALYTICS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminAnalytics />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_SETTINGS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminSettings />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path={ROUTES.ADMIN_PROFILE} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AdminProfile />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-            <Route path={ROUTES.ADMIN_REPORTS} element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <Reports />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-
-      {/* Admin AI Routes */}
-      <Route path="/admin/ai-generator" element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AIGenerator />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path="/admin/ai-templates" element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AITemplates />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
-      <Route path="/admin/ai-quality" element={
-        <AdminProtectedRoute>
-          <AdminLayout>
-            <AIQuality />
-          </AdminLayout>
-        </AdminProtectedRoute>
-      } />
+      <Route element={<AdminSection />}>
+        <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboard />} />
+        <Route path={ROUTES.ADMIN_COURSES} element={<AdminCourses />} />
+        <Route path={ROUTES.ADMIN_BADGES} element={<AdminBadges />} />
+        <Route path={ROUTES.ADMIN_ACHIEVEMENTS} element={<AdminAchievements />} />
+        <Route path={ROUTES.ADMIN_PATHS} element={<AdminPaths />} />
+        <Route path={ROUTES.ADMIN_MISSIONS} element={<AdminMissions />} />
+        <Route path="/admin/certificates/designer" element={<CertificateDesigner />} />
+        <Route path={ROUTES.ADMIN_USERS} element={<AdminUsers />} />
+        <Route path={ROUTES.ADMIN_ROLES} element={<AdminRoles />} />
+        <Route path={ROUTES.ADMIN_ANALYTICS} element={<AdminAnalytics />} />
+        <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettings />} />
+        <Route path={ROUTES.ADMIN_PROFILE} element={<AdminProfile />} />
+        <Route path={ROUTES.ADMIN_REPORTS} element={<Reports />} />
+        <Route path={ROUTES.ADMIN_CERTIFICATIONS} element={<AdminExams />} />
+        <Route path="/admin/ai-generator" element={<AIGenerator />} />
+        <Route path="/admin/ai-templates" element={<AITemplates />} />
+        <Route path="/admin/ai-quality" element={<AIQuality />} />
+        <Route path="/admin/courses/wizard" element={<CourseCreationWizard />} />
+      </Route>
 
       {/* Public Home (Landing) */}
       <Route path={ROUTES.HOME} element={
@@ -482,7 +271,7 @@ const AppRoutes: React.FC = () => {
           <LandingPage />
         </PublicRoute>
       } />
-      
+
       {/* Catch all - redirect to appropriate dashboard */}
       <Route path="*" element={
         <Navigate to={getDefaultRoute()} replace />
@@ -499,8 +288,3 @@ const Router: React.FC = () => {
 };
 
 export default Router;
-
-
-
-
-

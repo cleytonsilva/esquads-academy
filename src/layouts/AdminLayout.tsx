@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ROUTES } from '@/utils/constants';
-import { 
-  BarChart3, 
-  Users, 
-  BookOpen, 
-  Settings, 
+import {
+  BarChart3,
+  Users,
+  BookOpen,
+  Settings,
   Award,
   Trophy,
   FileText,
@@ -18,7 +18,8 @@ import {
   Database,
   Activity,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -36,6 +37,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: Award, label: 'Badges', href: ROUTES.ADMIN_BADGES },
     { icon: Trophy, label: 'Conquistas', href: ROUTES.ADMIN_ACHIEVEMENTS },
     { icon: Target, label: 'Missões', href: ROUTES.ADMIN_MISSIONS },
+    { icon: ShieldCheck, label: 'Certificações', href: ROUTES.ADMIN_CERTIFICATIONS },
     { icon: FileText, label: 'Relatórios', href: ROUTES.ADMIN_REPORTS },
     { icon: Settings, label: 'Configurações', href: ROUTES.ADMIN_SETTINGS },
   ];
