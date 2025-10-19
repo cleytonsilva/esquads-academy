@@ -22,8 +22,8 @@ export const ROUTES = {
   STUDENT_GAMIFICATION: '/student/gamification',
   STUDENT_PATHS: '/student/paths',
   STUDENT_PATH_DETAIL: '/student/paths/:id',
-  STUDENT_EXAMS: '/student/exams',
-  STUDENT_EXAM_ATTEMPT: '/student/exams/:id',
+  STUDENT_CERTIFICATIONS: '/student/certifications',
+  STUDENT_EXAM_ATTEMPT: '/student/certifications/:id',
   STUDENT_SOCIAL: '/student/social',
   
   // Instrutor
@@ -49,7 +49,7 @@ export const ROUTES = {
   ADMIN_PATHS: '/admin/paths',
   ADMIN_REPORTS: '/admin/reports',
   ADMIN_PROFILE: '/admin/profile',
-  ADMIN_EXAMS: '/admin/exams'
+  ADMIN_CERTIFICATIONS: '/admin/certifications'
 } as const;
 
 /**
@@ -98,7 +98,20 @@ export const MISSION_TYPES = {
   POINTS_EARNED: 'points_earned',
   STREAK: 'streak',
   QUIZ_SCORE: 'quiz_score',
-  TIME_SPENT: 'time_spent'
+  TIME_SPENT: 'time_spent',
+  TERMINAL_SCENARIO: 'terminal_scenario'
+} as const;
+
+export const MISSION_ENVIRONMENTS = {
+  FIREWALL: 'firewall',
+  INCIDENT_RESPONSE: 'incident_response',
+  FORENSICS: 'forensics'
+} as const;
+
+export const MISSION_DELIVERY_MODES = {
+  TERMINAL: 'terminal',
+  CONFIG_PANEL: 'config_panel',
+  HYBRID: 'hybrid'
 } as const;
 
 /**
@@ -194,6 +207,15 @@ export const NOTIFICATION_TYPES = {
   WARNING: 'warning',
   INFO: 'info'
 } as const;
+
+export const CERTIFICATION_DIFFICULTY = {
+  PRACTITIONER: 'practitioner',
+  ASSOCIATE: 'associate',
+  PROFESSIONAL: 'professional',
+  EXPERT: 'expert'
+} as const;
+
+export const DEFAULT_EXAM_LENGTHS = [20, 40, 60, 80];
 
 /**
  * ConfiguraÃ§Ãµes de cache

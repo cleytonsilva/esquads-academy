@@ -8,6 +8,55 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCachedUserData, useCache } from '@/hooks/useCache';
 import { supabase } from '@/integrations/supabase/client';
 import { CACHE_TTL } from '@/services/cacheService';
+import { MISSION_DELIVERY_MODES, MISSION_ENVIRONMENTS } from '@/utils/constants';
+
+type MissionEnvironment = typeof MISSION_ENVIRONMENTS[keyof typeof MISSION_ENVIRONMENTS];
+type MissionDeliveryMode = typeof MISSION_DELIVERY_MODES[keyof typeof MISSION_DELIVERY_MODES];
+
+const resolveEnvironment = (raw?: string | null, category?: string): MissionEnvironment => {
+  const normalized = (raw || '').toLowerCase();
+  const normalizedCategory = (category || '').toLowerCase();
+
+  if (normalized.includes('firewall') || normalizedCategory.includes('firewall')) {
+    return MISSION_ENVIRONMENTS.FIREWALL;
+  }
+
+  if (normalized.includes('forensic') || normalized.includes('forense') || normalizedCategory.includes('forense')) {
+    return MISSION_ENVIRONMENTS.FORENSICS;
+  }
+
+  if (normalized.includes('shell') || normalized.includes('terminal')) {
+    return MISSION_ENVIRONMENTS.INCIDENT_RESPONSE;
+  }
+
+  return MISSION_ENVIRONMENTS.INCIDENT_RESPONSE;
+};
+
+const resolveDeliveryMode = (environment: MissionEnvironment, raw?: string | null): MissionDeliveryMode => {
+  const normalized = (raw || '').toLowerCase();
+
+  if (normalized.includes('config')) {
+    return MISSION_DELIVERY_MODES.CONFIG_PANEL;
+  }
+
+  if (normalized.includes('hybrid')) {
+    return MISSION_DELIVERY_MODES.HYBRID;
+  }
+
+  if (normalized.includes('terminal')) {
+    return MISSION_DELIVERY_MODES.TERMINAL;
+  }
+
+  if (environment === MISSION_ENVIRONMENTS.FIREWALL) {
+    return MISSION_DELIVERY_MODES.CONFIG_PANEL;
+  }
+
+  if (environment === MISSION_ENVIRONMENTS.FORENSICS) {
+    return MISSION_DELIVERY_MODES.HYBRID;
+  }
+
+  return MISSION_DELIVERY_MODES.TERMINAL;
+};
 
 export interface Mission {
   id: string;
@@ -27,6 +76,13 @@ export interface Mission {
   hints?: string[];
   estimated_time?: number;
   tags?: string[];
+  environment: typeof MISSION_ENVIRONMENTS[keyof typeof MISSION_ENVIRONMENTS];
+  delivery_mode: typeof MISSION_DELIVERY_MODES[keyof typeof MISSION_DELIVERY_MODES];
+  xp_reward: number;
+  badge_reward?: string;
+  lives_required?: number;
+  unlock_requirement?: string;
+  flag_hint?: string;
   metadata?: {
     course_id?: string;
     lesson_id?: string;
@@ -92,6 +148,7 @@ interface UseMissionsReturn {
   isMissionCompleted: (missionId: string) => boolean;
   isMissionStarted: (missionId: string) => boolean;
   getMissionsByType: (type: string) => Mission[];
+  getMissionsByEnvironment: (environment: Mission['environment']) => Mission[];
   // Estados do terminal (compatibilidade)
   terminalState: {
     isOpen: boolean;
@@ -151,7 +208,27 @@ export function useMissions(): UseMissionsReturn {
       return (missionsData || []).map(mission => {
         // Filtrar progresso apenas do usuário atual
         const progress = mission.mission_progress?.find(p => p.user_id === user.id);
-        
+
+        const environment = resolveEnvironment(mission.environment, mission.category);
+        const deliveryMode = resolveDeliveryMode(environment, mission.delivery_mode || mission.metadata?.delivery_mode);
+        const xpReward = typeof mission.xp_reward === 'number'
+          ? mission.xp_reward
+          : typeof mission.points_reward === 'number'
+            ? mission.points_reward
+            : typeof mission.points === 'number'
+              ? mission.points
+              : 10;
+        const badgeReward = mission.badge_reward || mission.metadata?.badge_reward || mission.metadata?.badge || undefined;
+        const livesRequired = typeof mission.lives_required === 'number'
+          ? mission.lives_required
+          : typeof mission.metadata?.lives_required === 'number'
+            ? mission.metadata?.lives_required
+            : environment === MISSION_ENVIRONMENTS.INCIDENT_RESPONSE
+              ? 1
+              : 0;
+        const unlockRequirement = mission.unlock_requirement || mission.metadata?.unlock_requirement || undefined;
+        const flagHint = mission.flag_hint || mission.metadata?.flag_hint || undefined;
+
         return {
           id: mission.id || '',
           user_id: user.id,
@@ -164,8 +241,7 @@ export function useMissions(): UseMissionsReturn {
           difficulty: ['easy', 'medium', 'hard'].includes(mission.difficulty) 
             ? mission.difficulty 
             : 'easy',
-          points: typeof mission.points_reward === 'number' ? mission.points_reward : 
-                  typeof mission.points === 'number' ? mission.points : 10,
+          points: xpReward,
           target_value: typeof mission.target_value === 'number' ? mission.target_value : 1,
           current_progress: progress?.progress || 0,
           status: progress?.status || 'active',
@@ -175,6 +251,13 @@ export function useMissions(): UseMissionsReturn {
           hints: Array.isArray(mission.hints) ? mission.hints : [],
           estimated_time: typeof mission.estimated_time === 'number' ? mission.estimated_time : 30,
           tags: Array.isArray(mission.tags) ? mission.tags : [],
+          environment,
+          delivery_mode: deliveryMode,
+          xp_reward: xpReward,
+          badge_reward: badgeReward,
+          lives_required: livesRequired,
+          unlock_requirement: unlockRequirement,
+          flag_hint: flagHint,
           metadata: mission.metadata || {},
           created_at: mission.created_at || new Date().toISOString(),
           updated_at: progress?.updated_at || mission.updated_at || new Date().toISOString()
@@ -662,6 +745,10 @@ export function useMissions(): UseMissionsReturn {
     return safeMissions.filter(m => m.type === type);
   }, [safeMissions]);
 
+  const getMissionsByEnvironment = useCallback((environment: MissionEnvironment) => {
+    return safeMissions.filter(mission => mission.environment === environment);
+  }, [safeMissions]);
+
   return {
     missions: safeMissions,
     dailyMissions: safeMissions.filter(m => m.type === 'daily'),
@@ -689,6 +776,7 @@ export function useMissions(): UseMissionsReturn {
     isMissionCompleted,
     isMissionStarted,
     getMissionsByType,
+    getMissionsByEnvironment,
     // Estados do terminal (compatibilidade)
     terminalState: {
       isOpen: false,
@@ -724,20 +812,27 @@ function generateDefaultMissions(userId: string): Mission[] {
     {
       id: `daily_${Date.now()}_1`,
       user_id: userId,
-      title: 'Primeira Lição do Dia',
-      description: 'Complete uma lição hoje para manter seu progresso',
+      title: 'Rotina SOC: Check matinal',
+      description: 'Execute o checklist diário do SOC para manter a detecção ativa.',
       type: 'daily',
-      category: 'estudo',
+      category: 'operacoes-soc',
       difficulty: 'easy',
       points: 10,
       target_value: 1,
       current_progress: 0,
       status: 'active',
       expires_at: tomorrow.toISOString(),
-      requirements: [],
-      hints: ['Escolha um curso e comece uma lição'],
-      estimated_time: 30,
-      tags: ['iniciante', 'diário'],
+      requirements: ['Acessar o painel de eventos críticos'],
+      hints: ['Revise alertas não triados e confirme status dos sensores'],
+      estimated_time: 20,
+      tags: ['soc', 'rotina'],
+      environment: MISSION_ENVIRONMENTS.INCIDENT_RESPONSE,
+      delivery_mode: MISSION_DELIVERY_MODES.TERMINAL,
+      xp_reward: 10,
+      badge_reward: 'Guardião Matinal',
+      lives_required: 0,
+      unlock_requirement: undefined,
+      flag_hint: 'Valide a integridade do agente EDR',
       metadata: {},
       created_at: now.toISOString(),
       updated_at: now.toISOString()
@@ -745,20 +840,83 @@ function generateDefaultMissions(userId: string): Mission[] {
     {
       id: `weekly_${Date.now()}_1`,
       user_id: userId,
-      title: 'Explorador Semanal',
-      description: 'Complete 5 lições esta semana',
+      title: 'Firewall Sentinel',
+      description: 'Analise tráfego malicioso e ajuste regras para conter ataques de força bruta.',
       type: 'weekly',
-      category: 'progresso',
+      category: 'firewall',
       difficulty: 'medium',
-      points: 50,
-      target_value: 5,
+      points: 80,
+      target_value: 3,
       current_progress: 0,
       status: 'active',
       expires_at: nextWeek.toISOString(),
-      requirements: [],
-      hints: ['Mantenha uma rotina de estudos consistente'],
-      estimated_time: 150,
-      tags: ['semanal', 'progresso'],
+      requirements: ['Bloquear IPs suspeitos', 'Aplicar regra com tempo de expiração'],
+      hints: ['Priorize portas expostas e monitore tentativas em sequência'],
+      estimated_time: 45,
+      tags: ['firewall', 'config'],
+      environment: MISSION_ENVIRONMENTS.FIREWALL,
+      delivery_mode: MISSION_DELIVERY_MODES.CONFIG_PANEL,
+      xp_reward: 80,
+      badge_reward: 'Firewall Sentinel',
+      lives_required: 1,
+      unlock_requirement: 'Badge Cloud Defender',
+      flag_hint: 'Ajuste listas de bloqueio dinâmicas para encontrar o flag',
+      metadata: {},
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
+    },
+    {
+      id: `incident_${Date.now()}_1`,
+      user_id: userId,
+      title: 'Resposta a Incidente: Ransomware',
+      description: 'Isolar host comprometido e restaurar serviços críticos via terminal.',
+      type: 'challenge',
+      category: 'incident-response',
+      difficulty: 'hard',
+      points: 120,
+      target_value: 4,
+      current_progress: 0,
+      status: 'active',
+      expires_at: nextWeek.toISOString(),
+      requirements: ['Identificar processo malicioso', 'Restaurar backup seguro'],
+      hints: ['Use ferramentas forenses para listar arquivos criptografados'],
+      estimated_time: 60,
+      tags: ['terminal', 'shell', 'ransomware'],
+      environment: MISSION_ENVIRONMENTS.INCIDENT_RESPONSE,
+      delivery_mode: MISSION_DELIVERY_MODES.TERMINAL,
+      xp_reward: 120,
+      badge_reward: 'Incident Wrangler',
+      lives_required: 2,
+      unlock_requirement: 'Completar 3 missões SOC',
+      flag_hint: 'Recupere o arquivo README_FOR_FLAG.txt após limpar o host',
+      metadata: {},
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
+    },
+    {
+      id: `forensics_${Date.now()}_1`,
+      user_id: userId,
+      title: 'Forense Digital: Vazamento em Nuvem',
+      description: 'Investigue logs para encontrar exfiltração e gerar relatório executivo.',
+      type: 'achievement',
+      category: 'forense',
+      difficulty: 'medium',
+      points: 90,
+      target_value: 1,
+      current_progress: 0,
+      status: 'active',
+      expires_at: nextWeek.toISOString(),
+      requirements: ['Identificar bucket exposto', 'Documentar evidências no relatório'],
+      hints: ['Cruze logs de API Gateway com eventos IAM'],
+      estimated_time: 50,
+      tags: ['forense', 'cloud', 'relatorio'],
+      environment: MISSION_ENVIRONMENTS.FORENSICS,
+      delivery_mode: MISSION_DELIVERY_MODES.HYBRID,
+      xp_reward: 90,
+      badge_reward: 'Cloud Investigator',
+      lives_required: 1,
+      unlock_requirement: 'Score > 70% em simulado de certificação cloud',
+      flag_hint: 'Flag escondido em log de download suspeito',
       metadata: {},
       created_at: now.toISOString(),
       updated_at: now.toISOString()
