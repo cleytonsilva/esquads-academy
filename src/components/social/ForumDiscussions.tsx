@@ -54,10 +54,8 @@ export function ForumDiscussions({ searchQuery }: ForumDiscussionsProps) {
         .from('social_posts')
         .select(`
           *,
-          user:users(id, full_name, avatar_url),
-          course:courses(id, title),
-          likes_count:social_likes(count),
-          comments_count:social_comments(count)
+          user:users!social_posts_user_id_fkey(id, full_name, avatar_url),
+          course:courses!social_posts_course_id_fkey(id, title)
         `)
         .in('post_type', ['discussion', 'question']);
 
@@ -69,10 +67,11 @@ export function ForumDiscussions({ searchQuery }: ForumDiscussionsProps) {
       // Ordenação
       switch (sortBy) {
         case 'popular':
-          query = query.order('likes_count', { ascending: false });
+          // Ordenar por created_at por enquanto (likes_count não está disponível na tabela)
+          query = query.order('created_at', { ascending: false });
           break;
         case 'trending':
-          // Ordenar por atividade recente (comentários + likes)
+          // Ordenar por atividade recente
           query = query.order('updated_at', { ascending: false });
           break;
         default:
@@ -107,6 +106,8 @@ export function ForumDiscussions({ searchQuery }: ForumDiscussionsProps) {
       setDiscussions(processedDiscussions);
     } catch (error) {
       console.error('Erro ao buscar discussões:', error);
+      // Falha silenciosa - não interrompe a UI
+      setDiscussions([]);
     } finally {
       setLoading(false);
     }

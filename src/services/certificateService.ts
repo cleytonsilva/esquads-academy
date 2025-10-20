@@ -1,4 +1,4 @@
-﻿import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
 export interface Certificate {
@@ -7,7 +7,7 @@ export interface Certificate {
   course_id: string;
   course_title: string;
   instructor_name: string;
-  completion_date: string;
+  issued_at: string;
   certificate_hash: string;
   blockchain_verified: boolean;
   skills_acquired: string[];
@@ -118,7 +118,7 @@ export class CertificateService {
       if ((requiredMissions || []).length > 0) {
         const ids = (requiredMissions || []).map((m: any) => m.id)
         const { data: progress } = await supabase
-          .from('mission_progress')
+          .from('mission_attempts')
           .select('mission_id, status')
           .eq('user_id', userId)
           .in('mission_id', ids)
@@ -148,7 +148,7 @@ export class CertificateService {
         course_id: courseId,
         course_title: course.title,
         instructor_name: course.instructor_name,
-        completion_date: new Date().toISOString(),
+        issued_at: new Date().toISOString(),
         certificate_hash: certificateHash,
         blockchain_verified: blockchainVerified,
         skills_acquired: sanitizedCompletionData.skillsAcquired,
@@ -194,7 +194,7 @@ export class CertificateService {
         .from('certificates')
         .select('*')
         .eq('user_id', userId)
-        .order('completion_date', { ascending: false });
+        .order('issued_at', { ascending: false });
 
       if (error) {
         console.error('Erro ao buscar certificados:', error);
@@ -214,7 +214,7 @@ export class CertificateService {
         cert.id && 
         cert.user_id === userId &&
         cert.course_title &&
-        cert.completion_date
+        cert.issued_at
       );
 
       return validCertificates;
@@ -286,7 +286,7 @@ export class CertificateService {
           profiles!user_id(full_name, avatar_url)
         `)
         .eq('course_id', courseId)
-        .order('completion_date', { ascending: false });
+        .order('issued_at', { ascending: false });
 
       if (error) {
         throw new Error('Erro ao buscar certificados do curso');
@@ -321,7 +321,7 @@ export class CertificateService {
         studentName: certificate.profiles?.full_name || 'Estudante',
         courseTitle: certificate.course_title,
         instructorName: certificate.instructor_name,
-        completionDate: new Date(certificate.completion_date).toLocaleDateString('pt-BR'),
+        completionDate: new Date(certificate.issued_at).toLocaleDateString('pt-BR'),
         grade: certificate.grade,
         hoursCompleted: certificate.hours_completed,
         skillsAcquired: certificate.skills_acquired,
@@ -391,7 +391,7 @@ export class CertificateService {
       // Validar e filtrar certificados vÃ¡lidos
       const validCertificates = (certificates || []).filter(cert => 
         cert && 
-        cert.completion_date && 
+        cert.issued_at && 
         typeof cert.grade === 'number' &&
         typeof cert.hours_completed === 'number' &&
         Array.isArray(cert.skills_acquired)
@@ -402,7 +402,7 @@ export class CertificateService {
 
       const certificatesThisMonth = validCertificates.filter(cert => {
         try {
-          return new Date(cert.completion_date) >= thisMonth;
+          return new Date(cert.issued_at) >= thisMonth;
         } catch {
           return false;
         }
@@ -548,7 +548,7 @@ Certificado verificado em: ${verificationUrl}`
       const { data: userProfile, error: profileError } = await supabase
         .from('user_profiles')
         .select('full_name')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
       if (!profileError && userProfile) {
@@ -618,7 +618,7 @@ Certificado verificado em: ${verificationUrl}`
       course_id: certificateData.course_id,
       course_title: certificateData.course_title,
       instructor_name: certificateData.instructor_name,
-      completion_date: certificateData.completion_date,
+      issued_at: certificateData.issued_at,
       certificate_hash: certificateData.certificate_hash,
       blockchain_verified: certificateData.blockchain_verified,
       skills_acquired: certificateData.skills_acquired,
@@ -732,9 +732,9 @@ Certificado verificado em: ${verificationUrl}`
     
     certificates.forEach(cert => {
       try {
-        if (!cert.completion_date) return;
+        if (!cert.issued_at) return;
         
-        const date = new Date(cert.completion_date);
+        const date = new Date(cert.issued_at);
         
         // Validar se a data Ã© vÃ¡lida
         if (isNaN(date.getTime())) return;
@@ -742,7 +742,7 @@ Certificado verificado em: ${verificationUrl}`
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         monthCounts[monthKey] = (monthCounts[monthKey] || 0) + 1;
       } catch (error) {
-        console.warn('Erro ao processar data do certificado:', cert.completion_date, error);
+        console.warn('Erro ao processar data do certificado:', cert.issued_at, error);
       }
     });
 

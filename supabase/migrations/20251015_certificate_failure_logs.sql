@@ -1,6 +1,6 @@
 -- Certificate failure logs for analysis and retry
 CREATE TABLE IF NOT EXISTS certificate_failure_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID,
   course_id UUID,
   stage TEXT NOT NULL,

@@ -2,7 +2,7 @@
 -- Esta tabela é necessária para rastrear o progresso dos usuários nos cursos
 
 CREATE TABLE IF NOT EXISTS public.user_progress (
-    id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     course_id UUID REFERENCES public.courses(id) ON DELETE CASCADE,
     lesson_id UUID REFERENCES public.module_lessons(id) ON DELETE CASCADE,

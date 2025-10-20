@@ -1,5 +1,5 @@
 // Tipos auxiliares para facilitar o uso
-export type User = Database['public']['Tables']['users']['Row'];
+export type User = Database['public']['Tables']['user_profiles']['Row'];
 export type UserRole = 'admin' | 'student';
 export type LessonProgress = Database['public']['Tables']['lesson_progress']['Row'];
 export type ModuleLesson = Database['public']['Tables']['module_lessons']['Row'];

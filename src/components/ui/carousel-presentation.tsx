@@ -38,7 +38,7 @@ export default function CarouselPresentation({
   mode = 'create'
 }: CarouselPresentationProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -122,14 +122,6 @@ export default function CarouselPresentation({
         console.log(`🔄 Tentativa de reautenticação ${attempt + 1}/${maxRetries + 1}...`);
         
         // Verificar se ainda temos uma sessão válida
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.warn('⚠️ Erro ao obter sessão:', sessionError);
-          attempt++;
-          continue;
-        }
-        
         if (!session) {
           console.log('❌ Nenhuma sessão encontrada');
           return false;
@@ -226,9 +218,8 @@ export default function CarouselPresentation({
     }
 
     // Verificar se a sessão ainda está ativa
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      console.error('❌ DEBUG - Sessão inválida:', sessionError);
+    if (!session) {
+      console.error('❌ DEBUG - Sessão inválida');
       toast({
         title: "Sessão expirada",
         description: "Sua sessão expirou. Faça login novamente.",

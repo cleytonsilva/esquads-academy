@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -508,7 +508,7 @@ const StudentCourseDetail: React.FC = () => {
               <CardContent>
                 <ul className="space-y-2">
                   {course.learning_objectives.map((objective, index) => (
-                    <li key={index} className="flex items-start gap-2">
+                    <li key={`objective-${index}`} className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                       <span className="text-sm">{objective}</span>
                     </li>
@@ -524,7 +524,7 @@ const StudentCourseDetail: React.FC = () => {
               <CardContent>
                 <ul className="space-y-2">
                   {course.prerequisites.map((prerequisite, index) => (
-                    <li key={index} className="flex items-start gap-2">
+                    <li key={`prerequisite-${index}`} className="flex items-start gap-2">
                       <Target className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                       <span className="text-sm">{prerequisite}</span>
                     </li>

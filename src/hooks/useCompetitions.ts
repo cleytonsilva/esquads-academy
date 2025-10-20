@@ -216,26 +216,39 @@ export function useCompetitions() {
         .from('group_challenges')
         .select(`
           *,
-          study_groups(name),
-          challenge_progress(current_value, completed, completed_at)
+          study_groups!group_challenges_group_id_fkey(name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const challengesWithProgress = (data || []).map(challenge => ({
-        ...challenge,
-        group_name: challenge.study_groups?.name,
-        progress: challenge.challenge_progress?.[0] || {
-          current_value: 0,
-          completed: false
-        }
-      }));
+      // Buscar progress separadamente
+      const challengesWithProgress = await Promise.all(
+        (data || []).map(async (challenge) => {
+          const { data: progressData } = await supabase
+            .from('challenge_progress')
+            .select('current_value, completed, completed_at')
+            .eq('challenge_id', challenge.id)
+            .eq('user_id', user?.id)
+            .maybeSingle();
+          
+          return {
+            ...challenge,
+            group_name: challenge.study_groups?.name,
+            progress: progressData || {
+              current_value: 0,
+              completed: false
+            }
+          };
+        })
+      );
 
       setGroupChallenges(challengesWithProgress);
     } catch (err) {
       console.error('Erro ao buscar desafios em grupo:', err);
       setError('Erro ao carregar desafios em grupo');
+      // Falha silenciosa - não quebra a UI
+      setGroupChallenges([]);
     } finally {
       setLoading(false);
     }

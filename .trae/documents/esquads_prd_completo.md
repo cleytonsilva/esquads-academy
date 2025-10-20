@@ -1,190 +1,156 @@
-## Documento de Requisitos do Produto — Esquads Academy Platform (v2)
+## Documento de Requisitos do Produto — Esquads Academy Platform (v3 - Baseado no Código Atual)
 
 ### 1. Visão Geral do Produto
-A **Esquads Academy Platform** é uma plataforma de e-learning gamificada, voltada para formações técnicas com foco inicial em cibersegurança. Integra IA, gamificação, missões práticas, simulados e certificações com uma experiência interativa e personalizada.
 
-A plataforma se divide em dois ambientes principais:
-- **Admin**: gerenciamento de cursos, usuários, gamificação, IA e relatórios.
-- **Estudante**: trilhas de aprendizado, simulações práticas, área social, sistema de conquistas e certificados.
+A **Esquads Academy Platform** é uma plataforma gamificada de ensino técnico, focada em cibersegurança, que alia aprendizado prático com IA, missões, simulados e recompensas. O objetivo é promover uma experiência envolvente e orientada a conquistas, com gamificação invisível e progresso tangível para o aluno.
 
----
+A plataforma se divide em duas interfaces principais:
 
-### 2. Papéis de Usuário
+* **Admin** (`/admin`) — gerenciamento de cursos, usuários, badges, certificados e supervisão de progresso.
+* **Student** (`/student`) — consumo de conteúdo, execução de missões, simulados, acompanhamento de progresso e certificados.
 
-| Papel        | Registro                 | Permissões                                                                 |
-|--------------|--------------------------|----------------------------------------------------------------------------|
-| Admin        | Convite interno          | Gerencia tudo: cursos, usuários, badges, IA, certificados, relatórios     |
-| Estudante    | E-mail ou convite        | Consome conteúdos, completa missões, participa de simulações e interações |
+A lógica de gamificação é executada **no backend**, embutida no fluxo da plataforma, e **não deve aparecer como seção de menu separada** (como era o caso da rota `/student/gamification`, que será removida).
 
 ---
 
-### 3. Funcionalidades Gerais
+### 2. Papéis e Acesso
 
-#### 3.1 Módulos Principais
-
-1. **Dashboard Admin**: analytics em tempo real, notificações, insights de uso
-2. **Gestão de Cursos**: editor modular, controle de versão, pré-requisitos
-3. **Ambiente de Missões**: terminal interativo + IA com hints progressivas
-4. **Simulador de Provas**: modo teórico e prático (CTF), com feedback
-5. **Gamificação**: sistema de pontos, XP, badges, conquistas e ranking
-6. **Sistema de Certificados**: emissão automática, PDF, validação digital
-7. **Geração de Cursos IA**: assistente que cria trilhas completas com avaliações e visuais
-8. **Social Learning**: fóruns, grupos de estudo, rankings colaborativos
+| Papel   | Rota Base  | Permissões                                                                                      |
+| ------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| Admin   | `/admin`   | Criar e editar cursos, missões, usuários, certificados, badges, relatórios e validações manuais |
+| Student | `/student` | Navegar entre cursos, missões, simulados, acompanhar progresso, receber certificados            |
 
 ---
 
-### 4. Missões com IA
+### 3. Estrutura de Rotas
 
-#### 4.1 Estrutura de Missões
-- Terminal no estilo "hacker" com fundo escuro
-- Missão tem início, meio e fim com checkpoints
-- Chatbot IA guia com dicas progressivas
-- Avaliação automatizada por critérios de sucesso
+#### 3.1 Admin
 
-#### 4.2 Exemplo de Missão
-```json
-{
-  "titulo": "Protegendo uma API com Rate Limiting",
-  "entrada": "curl requests",
-  "meta": "Usar express-rate-limit para bloquear após 10 requisições/min",
-  "hints": [
-    "Considere o volume de requisições numa API pública.",
-    "Você conhece algum middleware de segurança para isso?",
-    "Explore express-rate-limit com windowMs: 60000, max: 10"
-  ],
-  "validacao": "Middleware implementado corretamente com resposta de erro",
-  "badge": "Network Defender - Rare"
-}
-```
+| Rota               | Função                           |
+| ------------------ | -------------------------------- |
+| `/admin/dashboard` | Painel geral com indicadores     |
+| `/admin/courses`   | Gestão de cursos                 |
+| `/admin/users`     | Gestão de usuários               |
+| `/admin/badges`    | Criação e edição de badges       |
+| `/admin/reports`   | Relatórios e análise de uso      |
+| `/admin/validate`  | Validação manual de certificados |
 
----
+#### 3.2 Student
 
-### 5. Simulados
-
-#### 5.1 Modos Disponíveis
-- **Teórico**: múltipla escolha, verdadeiro/falso, adaptativo por IA
-- **Prático/CTF**: sandbox com desafios técnicos reais
-
-#### 5.2 Geração Automática
-- A IA gera questões com base nos tópicos da trilha
-- Nível adaptável à performance do aluno
-- Feedback pedagógico individual por resposta
+| Rota                    | Função                                           |
+| ----------------------- | ------------------------------------------------ |
+| `/student/dashboard`    | Painel com visão de progresso                    |
+| `/student/courses`      | Lista e acesso aos cursos                        |
+| `/student/missions`     | Execução de missões práticas                     |
+| `/student/simulations`  | Simulados teóricos e práticos                    |
+| `/student/progress`     | Visualização de badges, reputação e XP acumulado |
+| `/student/certificates` | Listagem e download de certificados              |
+| `/student/profile`      | Configurações pessoais                           |
 
 ---
 
-### 6. Sistema de Gamificação Dinâmica
+### 4. Funcionalidades
 
-#### 6.1 Elementos
-- **XP**: progresso acumulativo (subida de nível)
-- **Reputação**: score social que pode subir ou cair
-- **Níveis**: desbloqueiam conteúdos, badges e simulações avançadas
-- **Ranking Sazonal**: recompensas mensais e destaque público
+#### 4.1 Missões com IA
 
-#### 6.2 Tabela de Pontuação
+* Terminal interativo embutido (xterm.js)
+* Chatbot IA fornece dicas progressivas (nível 1 → 3)
+* Backend avalia entrada e saída do aluno conforme critérios
+* Eventos são registrados (duração, tentativas, sucesso, falha)
 
-| Ação                                      | XP     | Reputação | Badge               |
-|------------------------------------------|--------|-----------|---------------------|
-| Finalizar aula com quiz 100%             | +50    | +5        | -                   |
-| Completar missão IA                      | +120   | +10       | Pode desbloquear    |
-| Ser avaliado positivamente em fórum      | +20    | +5        | -                   |
-| Gabaritar simulado                       | +150   | +10       | Simulated Hero      |
-| Abandonar missão                         | 0      | -10       | -                   |
-| Ser denunciado por trapaça/spam          | -50    | -25       | Suspensão Temporária|
+#### 4.2 Simulados
 
-#### 6.3 Reputação
-- Varia de -100 a +100
-- Abaixo de -30: bloqueio parcial de funções sociais
-- Acima de +70: selo "Mentor da Comunidade", acesso antecipado
+* **Teóricos**: múltipla escolha, verdadeiro/falso, com feedback por questão
+* **Práticos (CTF)**: desafios que exigem envio de flags ou ações em ambiente controlado
+* Geração automática por IA com ajustes dinâmicos de dificuldade
 
-#### 6.4 Ranking Sazonal
-- Baseado em: XP + badges + simulados + reputação
-- Recompensas: certificado, destaque no feed, badge exclusiva
+#### 4.3 Gamificação
 
----
+* Implementada como serviço de backend (não rota ou página)
+* Regras configuráveis para eventos: `missão completa`, `quiz correto`, `feedback positivo`, `abandono de missão`, etc.
+* Pontuação automática:
 
-### 7. Sistema de Conquistas
+  * XP acumulativo para níveis
+  * Reputação que pode subir ou cair
+  * Ranking sazonal
+* Backend calcula, atualiza e fornece progresso ao frontend via API
+* Nenhuma rota de menu chamada "/gamification" — lógica integrada nos módulos e no dashboard do estudante
 
-#### 7.1 Tipos
-| Tipo        | Exemplo                                |
-|-------------|-----------------------------------------|
-| Progress    | "Concluir 5 módulos"                   |
-| Achievement | "Gabaritar simulado em 3 trilhas"      |
-| Special     | "Evento de Outubro - CTF Hackerween"   |
-| Milestone   | "Finalizar 10 cursos com certificado"  |
+#### 4.4 Sistema de Conquistas (Badges)
 
-#### 7.2 Raridade
+* Tipos: `Progress`, `Achievement`, `Special`, `Milestone`
+* Raridades: `Common`, `Rare`, `Epic`, `Legendary`
+* Atribuição automática baseada em eventos e regras do sistema
+* Revogação automática (reputação negativa, inatividade, fraude)
 
-| Raridade   | Cor                             |
-|------------|----------------------------------|
-| Common     | #6B7280                          |
-| Rare       | #06B6D4                          |
-| Epic       | gradiente #8B5CF6 → #EC4899      |
-| Legendary  | gradiente #F59E0B → #EF4444      |
+#### 4.5 Certificados Digitais
 
-#### 7.3 Regras de Perda
-- Badges de reputação podem ser revogadas
-- Badges sazonais desaparecem após inatividade > 60 dias
-- Certificados fraudulentos removem conquistas associadas
+* Gerados automaticamente após conclusão e aprovação em curso
+* Cursos com CTF exigem validação manual pelo admin
+* Incluem PDF, QR Code, e verificação via hash
+* Página pública de verificação
 
-#### 7.4 Interface
-- Cards com status: conquistado / disponível / revogado
-- Filtros por categoria e raridade
-- Animações ao conquistar (som, brilho, fade-in)
-- Notificações no dashboard e email
+#### 4.6 Dashboard do Estudante
+
+* Barra de XP + nível atual
+* Conquistas e badges adquiridas
+* Missões pendentes
+* Simulados sugeridos
+* Reputação
+* Ranking sazonal
+* Recomendações personalizadas via IA (próxima missão ou reforço)
 
 ---
 
-### 8. Certificados
-- Emissão automática ao final de cursos com aprovação
-- Compartilháveis com LinkedIn
-- QR Code e hash digital de verificação
-- Estatísticas: horas estudadas, notas médias, instrutores
+### 5. Backend e Serviços Auxiliares
+
+* **GamificationService**
+
+  * `recordEvent(userId, eventType)`
+  * `evaluateBadges(userId)`
+  * `calculateRanking()`
+
+* **IA Services**
+
+  * `HintAgent`: gera dicas baseadas em progresso
+  * `FeedbackAgent`: emite análise personalizada de desempenho
+  * `CourseGeneratorAgent`: cria cursos e simulados dinamicamente
+
+* **CertificadosService**
+
+  * `generateCertificate(userId, courseId)`
+  * `verifyHash(hash)`
+
+* **ProgressoService**
+
+  * `getStudentSummary(userId)` — usado pelo dashboard
 
 ---
 
-### 9. Barra Lateral do Estudante
-```
-📊 Dashboard
-📚 Cursos
-🧠 Missões
-🧪 Simulados
-🏆 Conquistas
-🎓 Certificados
-🧑‍💻 Perfil
-```
+### 6. Modelagem de Dados Requerida (Supabase)
+
+| Tabela              | Função                                    |
+| ------------------- | ----------------------------------------- |
+| `xp_events`         | Histórico de XP ganhos                    |
+| `reputation_events` | Eventos que afetam reputação              |
+| `user_badges`       | Relacionamento aluno x conquistas         |
+| `badge_definitions` | Configuração de badges e regras           |
+| `user_rankings`     | Ranking mensal ou trimestral              |
+| `missions`          | Banco de missões e critérios de validação |
+| `user_missions`     | Progresso do aluno em missões             |
+| `simulations`       | Simulados disponíveis                     |
+| `user_simulations`  | Progresso do aluno em simulados           |
+| `certificates`      | Certificados emitidos                     |
 
 ---
 
-### 10. Design e Estilo
-- **Fonte**: Inter, Roboto Mono
-- **Cores principais**: #1E40AF, #3B82F6, #60A5FA
-- **Estilo**: cards com sombras suaves, layout responsivo
-- **Ícones**: Lucide React, outline, 20px padrão
-- **Gamificação**: cores específicas por badge, transições suaves, responsividade mobile-first
+### 7. Considerações Finais
+
+* A lógica de gamificação deve ser **invisível para o usuário** e **consumida via dados** integrados ao progresso e ao dashboard.
+* O sistema deve manter **separação clara entre rotas admin e student**, com autorização e RLS configuradas adequadamente.
+* Missões e simulados devem gerar eventos para o sistema de gamificação.
+* O frontend apenas exibe dados consolidados e nunca executa lógica de gamificação diretamente.
 
 ---
 
-### 11. Fluxos de Usuário
-
-#### Estudante:
-1. Acessa dashboard
-2. Visualiza progresso, cursos, conquistas
-3. Faz missão ou simulado
-4. Recebe XP, badge, certificado
-5. Ranking atualizado
-
-#### Admin:
-1. Acessa analytics
-2. Cria cursos com IA
-3. Valida conteúdo
-4. Gera relatórios e rankings
-5. Garante moderação e justiça no sistema
-
----
-
-Seções futuras podem incluir:
-- Integração com Supabase/Auth
-- Painel de IA para criar quizzes contextuais
-- Loja de skins com tokens simbólicos
-- API pública para organizações parceiras
-
+> Esse PRD reflete a arquitetura real observada no repositório e os ajustes sugeridos para alinhar código, experiência do usuário e escalabilidade técnica.

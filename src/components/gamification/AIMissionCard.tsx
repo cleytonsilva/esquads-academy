@@ -205,8 +205,8 @@ export function AIMissionCard({
           </div>
         )}
 
-        {/* Dicas */}
-        {variant === 'detailed' && mission.hints.length > 0 && (
+        {/* Hints */}
+        {mission.hints && Array.isArray(mission.hints) && mission.hints.length > 0 && (
           <div className="space-y-2">
             <h5 className="text-sm font-medium text-gray-700">Dicas:</h5>
             <ul className="text-xs text-gray-600 space-y-1">
@@ -221,7 +221,7 @@ export function AIMissionCard({
         )}
 
         {/* Tags */}
-        {mission.tags.length > 0 && (
+        {mission.tags && Array.isArray(mission.tags) && mission.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {mission.tags.slice(0, 4).map((tag, index) => (
               <Badge key={index} variant="secondary" className="text-xs">

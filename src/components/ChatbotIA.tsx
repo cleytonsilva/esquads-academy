@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { chatbotService, type ChatbotContext, type ChatbotResponse } from '@/services/chatbotService'
 
 export interface ChatMessage {
   id: string
@@ -27,14 +28,21 @@ export interface ChatMessage {
     stepId?: string
     codeSnippet?: string
     suggestions?: string[]
-    helpType?: 'hint' | 'explanation' | 'example' | 'debug'
+    helpType?: 'hint' | 'explanation' | 'example' | 'debug' | 'encouragement'
+    nextSteps?: string[]
   }
 }
 
 interface ChatbotIAProps {
   missionId?: string
+  missionTitle?: string
   currentStep?: number
+  totalSteps?: number
   userCode?: string
+  lastError?: string
+  objectives?: string[]
+  difficulty?: string
+  category?: string
   onCodeSuggestion?: (code: string) => void
   onHintRequest?: (type: string) => void
   className?: string
@@ -45,8 +53,14 @@ interface ChatbotIAProps {
 
 export const ChatbotIA: React.FC<ChatbotIAProps> = ({
   missionId,
+  missionTitle,
   currentStep,
+  totalSteps,
   userCode,
+  lastError,
+  objectives,
+  difficulty,
+  category,
   onCodeSuggestion,
   onHintRequest,
   className,
@@ -54,20 +68,40 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
   onToggleMinimize,
   onClose
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      type: 'bot',
-      content: 'Olá! Sou seu assistente IA para missões. Como posso ajudar você hoje?',
-      timestamp: new Date(),
-      metadata: { helpType: 'explanation' }
-    }
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Inicializar sessão do chatbot quando o componente monta
+  useEffect(() => {
+    const context: ChatbotContext = {
+      missionId,
+      missionTitle,
+      currentStep,
+      totalSteps,
+      objectives,
+      difficulty,
+      category
+    }
+    
+    chatbotService.startMissionSession(context)
+    
+    // Adicionar mensagem de boas-vindas
+    const welcomeMessage: ChatMessage = {
+      id: '1',
+      type: 'bot',
+      content: missionTitle 
+        ? `Olá! Estou aqui para ajudar você na missão "${missionTitle}". Como posso ajudar você hoje?`
+        : 'Olá! Sou seu assistente IA para missões de cybersecurity. Como posso ajudar você hoje?',
+      timestamp: new Date(),
+      metadata: { helpType: 'explanation' }
+    }
+    
+    setMessages([welcomeMessage])
+  }, [missionId, missionTitle])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -77,52 +111,53 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
     scrollToBottom()
   }, [messages])
 
-  // Simular resposta do chatbot (em produção, seria uma chamada para API)
+  // Gerar resposta usando OpenAI
   const generateBotResponse = async (userMessage: string): Promise<ChatMessage> => {
     setIsTyping(true)
     
-    // Simular delay de processamento
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000))
-    
-    let response = ''
-    let helpType: 'hint' | 'explanation' | 'example' | 'debug' = 'explanation'
-    let suggestions: string[] = []
-    
-    const lowerMessage = userMessage.toLowerCase()
-    
-    if (lowerMessage.includes('erro') || lowerMessage.includes('bug') || lowerMessage.includes('não funciona')) {
-      helpType = 'debug'
-      response = 'Vejo que você está enfrentando um erro. Vamos debugar juntos! Primeiro, verifique se:\n\n1. A sintaxe está correta\n2. Todas as variáveis estão declaradas\n3. Os tipos de dados estão corretos\n\nPode me mostrar o código que está causando problema?'
-      suggestions = ['Verificar sintaxe', 'Revisar variáveis', 'Testar passo a passo']
-    } else if (lowerMessage.includes('dica') || lowerMessage.includes('ajuda') || lowerMessage.includes('como')) {
-      helpType = 'hint'
-      response = 'Aqui está uma dica para você avançar:\n\n💡 Lembre-se de que cada missão tem objetivos específicos. Foque em resolver um problema de cada vez.\n\n🔍 Se estiver travado, tente quebrar o problema em partes menores.\n\n📚 Consulte a documentação quando necessário!'
-      suggestions = ['Ver exemplo', 'Explicar conceito', 'Próximo passo']
-    } else if (lowerMessage.includes('exemplo') || lowerMessage.includes('código')) {
-      helpType = 'example'
-      response = 'Aqui está um exemplo que pode ajudar:\n\n```javascript\n// Exemplo básico\nfunction exemploFuncao() {\n  console.log("Olá, mundo!");\n  return true;\n}\n```\n\nEste é um padrão comum que você pode adaptar para sua missão!'
-      suggestions = ['Adaptar código', 'Ver mais exemplos', 'Explicar linha por linha']
-    } else if (lowerMessage.includes('explicar') || lowerMessage.includes('entender')) {
-      helpType = 'explanation'
-      response = 'Vou explicar o conceito para você:\n\n📖 Este tópico envolve entender como os dados fluem através do código.\n\n🔄 Pense nisso como uma sequência de transformações, onde cada etapa modifica ou processa a informação.\n\n✨ O importante é manter a lógica clara e organizada!'
-      suggestions = ['Ver exemplo prático', 'Exercício guiado', 'Conceitos relacionados']
-    } else {
-      response = 'Entendi sua pergunta! Vou fazer o meu melhor para ajudar.\n\n🤖 Como assistente IA, posso:\n• Dar dicas e sugestões\n• Explicar conceitos\n• Ajudar com debugging\n• Fornecer exemplos de código\n\nO que você gostaria de explorar?'
-      suggestions = ['Pedir dica', 'Ver exemplo', 'Explicar conceito', 'Ajuda com erro']
-    }
-    
-    setIsTyping(false)
-    
-    return {
-      id: Date.now().toString(),
-      type: 'bot',
-      content: response,
-      timestamp: new Date(),
-      metadata: {
+    try {
+      const context: ChatbotContext = {
         missionId,
-        stepId: currentStep?.toString(),
-        helpType,
-        suggestions
+        missionTitle,
+        currentStep,
+        totalSteps,
+        userCode,
+        lastError,
+        objectives,
+        difficulty,
+        category
+      }
+
+      const response: ChatbotResponse = await chatbotService.generateResponse(userMessage, context)
+      
+      setIsTyping(false)
+      
+      return {
+        id: Date.now().toString(),
+        type: 'bot',
+        content: response.message,
+        timestamp: new Date(),
+        metadata: {
+          missionId,
+          stepId: currentStep?.toString(),
+          helpType: response.type,
+          suggestions: response.suggestions,
+          codeSnippet: response.codeSnippet,
+          nextSteps: response.nextSteps
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao gerar resposta do chatbot:', error)
+      setIsTyping(false)
+      
+      return {
+        id: Date.now().toString(),
+        type: 'bot',
+        content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.',
+        timestamp: new Date(),
+        metadata: {
+          helpType: 'explanation'
+        }
       }
     }
   }
@@ -150,14 +185,7 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
       const botResponse = await generateBotResponse(userMessage.content)
       setMessages(prev => [...prev, botResponse])
     } catch (error) {
-      console.error('Erro ao gerar resposta do bot:', error)
-      const errorMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: 'bot',
-        content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente!',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
+      console.error('Erro ao enviar mensagem:', error)
     } finally {
       setIsLoading(false)
     }
@@ -175,31 +203,52 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
     inputRef.current?.focus()
   }
 
-  const quickActions = [
-    { icon: Lightbulb, label: 'Pedir dica', message: 'Pode me dar uma dica para esta missão?' },
-    { icon: Code, label: 'Ver exemplo', message: 'Pode mostrar um exemplo de código?' },
-    { icon: HelpCircle, label: 'Explicar conceito', message: 'Pode explicar este conceito?' }
-  ]
+  const handleCodeSuggestion = (code: string) => {
+    if (onCodeSuggestion) {
+      onCodeSuggestion(code)
+    }
+  }
+
+  const getHelpTypeIcon = (type?: string) => {
+    switch (type) {
+      case 'hint':
+        return <Lightbulb className="h-4 w-4 text-yellow-500" />
+      case 'example':
+        return <Code className="h-4 w-4 text-blue-500" />
+      case 'debug':
+        return <HelpCircle className="h-4 w-4 text-red-500" />
+      case 'encouragement':
+        return <Bot className="h-4 w-4 text-green-500" />
+      default:
+        return <Bot className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  const getHelpTypeBadge = (type?: string) => {
+    switch (type) {
+      case 'hint':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Dica</Badge>
+      case 'example':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Exemplo</Badge>
+      case 'debug':
+        return <Badge variant="secondary" className="bg-red-100 text-red-800">Debug</Badge>
+      case 'encouragement':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Motivação</Badge>
+      default:
+        return <Badge variant="secondary">Explicação</Badge>
+    }
+  }
 
   if (isMinimized) {
     return (
       <Card className={`fixed bottom-4 right-4 w-80 shadow-lg ${className}`}>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className="bg-blue-100 text-blue-600">
-                  <Bot className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-              <CardTitle className="text-sm">Assistente IA</CardTitle>
-              {isTyping && (
-                <Badge variant="secondary" className="text-xs">
-                  Digitando...
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              Assistente IA
+            </CardTitle>
+            <div className="flex gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -208,14 +257,16 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
               >
                 <Maximize2 className="h-3 w-3" />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-6 w-6 p-0"
-              >
-                <X className="h-3 w-3" />
-              </Button>
+              {onClose && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -224,120 +275,133 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
   }
 
   return (
-    <Card className={`flex flex-col h-full ${className}`}>
-      <CardHeader className="pb-3">
+    <Card className={`fixed bottom-4 right-4 w-96 h-[600px] shadow-lg flex flex-col ${className}`}>
+      <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-blue-100 text-blue-600">
-                <Bot className="h-5 w-5" />
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <CardTitle className="text-lg">Assistente IA</CardTitle>
-              <p className="text-sm text-gray-500">
-                {missionId ? `Missão ${missionId} - Passo ${currentStep || 1}` : 'Pronto para ajudar'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {onToggleMinimize && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleMinimize}
-                className="h-8 w-8 p-0"
-              >
-                <Minimize2 className="h-4 w-4" />
-              </Button>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Assistente IA
+            {missionTitle && (
+              <Badge variant="outline" className="text-xs">
+                {missionTitle}
+              </Badge>
             )}
+          </CardTitle>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleMinimize}
+              className="h-6 w-6 p-0"
+            >
+              <Minimize2 className="h-3 w-3" />
+            </Button>
             {onClose && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="h-8 w-8 p-0"
+                className="h-6 w-6 p-0"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </Button>
             )}
           </div>
         </div>
+        {currentStep && totalSteps && (
+          <div className="text-xs text-muted-foreground">
+            Passo {currentStep} de {totalSteps}
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col p-4 pt-0">
-        {/* Ações rápidas */}
-        <div className="flex gap-2 mb-4">
-          {quickActions.map((action, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              size="sm"
-              onClick={() => handleSuggestionClick(action.message)}
-              className="flex items-center gap-1 text-xs"
-            >
-              <action.icon className="h-3 w-3" />
-              {action.label}
-            </Button>
-          ))}
-        </div>
-
-        <Separator className="mb-4" />
-
-        {/* Área de mensagens */}
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 ${
+                  message.type === 'user' ? 'justify-end' : 'justify-start'
+                }`}
               >
                 {message.type === 'bot' && (
                   <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                      <Bot className="h-4 w-4" />
+                    <AvatarFallback className="bg-blue-100">
+                      {getHelpTypeIcon(message.metadata?.helpType)}
                     </AvatarFallback>
                   </Avatar>
                 )}
                 
-                <div className={`max-w-[80%] ${message.type === 'user' ? 'order-first' : ''}`}>
-                  <div
-                    className={`rounded-lg p-3 ${
-                      message.type === 'user'
-                        ? 'bg-blue-600 text-white ml-auto'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap text-sm">{message.content}</div>
-                    
-                    {message.metadata?.suggestions && message.metadata.suggestions.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {message.metadata.suggestions.map((suggestion, index) => (
-                          <Button
-                            key={index}
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            className="text-xs h-6"
-                          >
-                            {suggestion}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
+                <div
+                  className={`max-w-[80%] rounded-lg p-3 ${
+                    message.type === 'user'
+                      ? 'bg-blue-500 text-white ml-auto'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  {message.type === 'bot' && message.metadata?.helpType && (
+                    <div className="mb-2">
+                      {getHelpTypeBadge(message.metadata.helpType)}
+                    </div>
+                  )}
+                  
+                  <div className="text-sm whitespace-pre-wrap">
+                    {message.content}
                   </div>
                   
-                  <div className="text-xs text-gray-400 mt-1 px-1">
-                    {message.timestamp.toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  {message.metadata?.codeSnippet && (
+                    <div className="mt-2 p-2 bg-gray-800 text-green-400 rounded text-xs font-mono overflow-x-auto">
+                      <pre>{message.metadata.codeSnippet}</pre>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCodeSuggestion(message.metadata!.codeSnippet!)}
+                        className="mt-1 h-6 text-xs text-green-400 hover:text-green-300"
+                      >
+                        Usar código
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {message.metadata?.suggestions && message.metadata.suggestions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {message.metadata.suggestions.map((suggestion, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className="h-6 text-xs"
+                        >
+                          {suggestion}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {message.metadata?.nextSteps && message.metadata.nextSteps.length > 0 && (
+                    <div className="mt-2">
+                      <div className="text-xs font-medium mb-1">Próximos passos:</div>
+                      <ul className="text-xs space-y-1">
+                        {message.metadata.nextSteps.map((step, index) => (
+                          <li key={index} className="flex items-start gap-1">
+                            <span className="text-blue-500">•</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-gray-500 mt-1">
+                    {message.timestamp.toLocaleTimeString()}
                   </div>
                 </div>
-
+                
                 {message.type === 'user' && (
                   <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback className="bg-green-100 text-green-600">
+                    <AvatarFallback className="bg-blue-500 text-white">
                       <User className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
@@ -348,8 +412,8 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
             {isTyping && (
               <div className="flex gap-3 justify-start">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="bg-blue-100 text-blue-600">
-                    <Bot className="h-4 w-4" />
+                  <AvatarFallback className="bg-blue-100">
+                    <Bot className="h-4 w-4 text-gray-500" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="bg-gray-100 rounded-lg p-3">
@@ -361,13 +425,13 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
                 </div>
               </div>
             )}
-            
-            <div ref={messagesEndRef} />
           </div>
+          <div ref={messagesEndRef} />
         </ScrollArea>
 
-        {/* Input de mensagem */}
-        <div className="mt-4 flex gap-2">
+        <Separator className="my-4" />
+
+        <div className="flex gap-2">
           <Input
             ref={inputRef}
             value={inputMessage}
@@ -383,6 +447,41 @@ export const ChatbotIA: React.FC<ChatbotIAProps> = ({
             size="sm"
           >
             <Send className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleSuggestionClick('Preciso de uma dica')}
+            className="h-6 text-xs"
+          >
+            💡 Dica
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleSuggestionClick('Pode me dar um exemplo?')}
+            className="h-6 text-xs"
+          >
+            📝 Exemplo
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleSuggestionClick('Estou com um erro')}
+            className="h-6 text-xs"
+          >
+            🐛 Debug
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleSuggestionClick('Explique este conceito')}
+            className="h-6 text-xs"
+          >
+            📚 Explicar
           </Button>
         </div>
       </CardContent>

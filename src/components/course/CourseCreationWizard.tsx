@@ -97,7 +97,7 @@ const CATEGORIES = [
 
 export const CourseCreationWizard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { showReward } = useNotifications();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -591,7 +591,7 @@ export const CourseCreationWizard: React.FC = () => {
         // Auto-generate quiz for this module (com timeout)
         try {
           setOperationStatus(`Gerando quiz para: ${module.title}...`);
-          const authHeader = { 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` };
+          const authHeader = { 'Authorization': `Bearer ${session?.access_token}` };
           
           await Promise.race([
             fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/courses/modules/${moduleData.id}/quiz/generate`, {
@@ -612,7 +612,7 @@ export const CourseCreationWizard: React.FC = () => {
       // Auto-generate final exam for the course (com timeout)
       try {
         setOperationStatus('Gerando exame final...');
-        const authHeader = { 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` };
+        const authHeader = { 'Authorization': `Bearer ${session?.access_token}` };
         
         await Promise.race([
           fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/courses/${course.id}/exams/generate`, {

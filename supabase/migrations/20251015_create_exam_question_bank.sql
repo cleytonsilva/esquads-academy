@@ -1,6 +1,6 @@
 -- Create question bank for exams (multiple-choice only)
 CREATE TABLE IF NOT EXISTS exam_question_bank (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   question_text TEXT NOT NULL,
   options TEXT[] NOT NULL,
   answer TEXT NOT NULL,

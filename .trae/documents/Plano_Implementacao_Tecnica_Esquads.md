@@ -1,741 +1,782 @@
-# Plano de Implementação Técnica - Esquads Academy Platform
-
-## 1. Roadmap de Implementação
-
-### 1.1 Sprint 1: Correções Críticas (2-3 dias)
-
-#### Dia 1: Estrutura de Dados
-**Manhã (4h)**
-- [ ] Criar migration `20241215_critical_fixes.sql`
-- [ ] Implementar tabela `user_profiles` completa
-- [ ] Criar tabela `course_enrollments`
-- [ ] Corrigir estrutura da tabela `certificates`
-
-**Tarde (4h)**
-- [ ] Configurar políticas RLS para todas as tabelas
-- [ ] Criar índices de performance
-- [ ] Implementar triggers automáticos
-- [ ] Testar integridade referencial
-
-#### Dia 2: Correção de Serviços
-**Manhã (4h)**
-- [ ] Corrigir `recommendationService.ts`
-- [ ] Atualizar `aiMissionGenerator.ts`
-- [ ] Ajustar `certificateService.ts`
-- [ ] Implementar tratamento de erro robusto
-
-**Tarde (4h)**
-- [ ] Criar hooks personalizados (`useUserProfile`, `useCertificates`)
-- [ ] Implementar componentes com fallbacks
-- [ ] Configurar sistema de cache
-- [ ] Testes unitários básicos
-
-#### Dia 3: Integração e Testes
-**Manhã (4h)**
-- [ ] Integrar todas as correções
-- [ ] Testes de integração completos
-- [ ] Validar fluxos críticos
-- [ ] Correção de bugs encontrados
-
-**Tarde (4h)**
-- [ ] Deploy em ambiente de staging
-- [ ] Testes de aceitação
-- [ ] Documentação das correções
-- [ ] Preparação para produção
-
-### 1.2 Sprint 2: Funcionalidades Essenciais (3-4 dias)
-
-#### Funcionalidades Prioritárias
-1. **Sistema de Gamificação Básico**
-   - Tabelas de badges e conquistas
-   - Sistema de pontos automático
-   - Leaderboards simples
-
-2. **Dashboard Administrativo Funcional**
-   - Métricas básicas de usuários
-   - Relatórios de progresso
-   - Gestão de cursos simplificada
-
-3. **Sistema de Progresso do Estudante**
-   - Tracking de lições completadas
-   - Indicadores visuais de progresso
-   - Sistema de marcos
-
-### 1.3 Sprint 3: Recursos Avançados (4-5 dias)
-
-#### Funcionalidades Avançadas
-1. **Sistema de IA para Cursos**
-   - Geração automatizada de conteúdo
-   - Templates personalizáveis
-   - Controle de qualidade
-
-2. **Recursos Sociais**
-   - Interação entre usuários
-   - Sistema de rankings
-   - Funcionalidades colaborativas
-
-## 2. Arquivos de Migration Críticos
-
-### 2.1 Migration Principal: `20241215_critical_fixes.sql`
-
-```sql
--- =====================================================
--- MIGRATION CRÍTICA: Correção de Estrutura de Dados
--- Data: 2024-12-15
--- Descrição: Implementa todas as correções críticas identificadas
--- =====================================================
-
-BEGIN;
-
--- 1. CRIAR TABELA USER_PROFILES
-CREATE TABLE IF NOT EXISTS public.user_profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  interests TEXT[] DEFAULT '{}',
-  skill_level TEXT DEFAULT 'beginner' CHECK (skill_level IN ('beginner', 'intermediate', 'advanced')),
-  learning_goals TEXT[] DEFAULT '{}',
-  preferred_duration TEXT DEFAULT 'medium' CHECK (preferred_duration IN ('short', 'medium', 'long')),
-  completed_courses TEXT[] DEFAULT '{}',
-  current_courses TEXT[] DEFAULT '{}',
-  favorite_categories TEXT[] DEFAULT '{}',
-  learning_style TEXT DEFAULT 'visual' CHECK (learning_style IN ('visual', 'auditory', 'kinesthetic', 'reading')),
-  time_availability TEXT DEFAULT 'medium' CHECK (time_availability IN ('low', 'medium', 'high')),
-  level INTEGER DEFAULT 1,
-  total_points INTEGER DEFAULT 0,
-  activity_pattern TEXT DEFAULT 'mixed',
-  difficulty_preference TEXT DEFAULT 'medium',
-  preferred_categories TEXT[] DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id)
-);
-
--- 2. CRIAR TABELA COURSE_ENROLLMENTS
-CREATE TABLE IF NOT EXISTS public.course_enrollments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  course_id UUID REFERENCES public.courses(id) ON DELETE CASCADE,
-  enrolled_at TIMESTAMPTZ DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  progress_percentage INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused', 'dropped')),
-  last_accessed TIMESTAMPTZ DEFAULT NOW(),
-  time_spent INTEGER DEFAULT 0,
-  UNIQUE(user_id, course_id)
-);
-
--- 3. ATUALIZAR TABELA CERTIFICATES
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS course_title TEXT;
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS instructor_name TEXT;
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS completion_date TIMESTAMPTZ DEFAULT NOW();
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS certificate_hash TEXT;
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS blockchain_verified BOOLEAN DEFAULT false;
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS skills_acquired TEXT[] DEFAULT '{}';
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS grade DECIMAL(5,2);
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS hours_completed INTEGER;
-ALTER TABLE public.certificates ADD COLUMN IF NOT EXISTS verification_url TEXT;
-
--- Adicionar constraint única para certificate_hash se não existir
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'certificates_certificate_hash_key'
-    ) THEN
-        ALTER TABLE public.certificates ADD CONSTRAINT certificates_certificate_hash_key UNIQUE (certificate_hash);
-    END IF;
-END $$;
-
--- 4. CRIAR TABELA MISSION_PROGRESS
-CREATE TABLE IF NOT EXISTS public.mission_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  mission_id UUID REFERENCES public.missions(id) ON DELETE CASCADE,
-  current_phase INTEGER DEFAULT 0,
-  progress_data JSONB DEFAULT '{}',
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed', 'failed')),
-  started_at TIMESTAMPTZ DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  UNIQUE(user_id, mission_id)
-);
-
--- 5. CRIAR TABELA LESSON_PROGRESS
-CREATE TABLE IF NOT EXISTS public.lesson_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  lesson_id UUID REFERENCES public.module_lessons(id) ON DELETE CASCADE,
-  completed BOOLEAN DEFAULT false,
-  completion_date TIMESTAMPTZ,
-  time_spent INTEGER DEFAULT 0,
-  score DECIMAL(5,2),
-  attempts INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, lesson_id)
-);
-
--- 6. CRIAR ÍNDICES PARA PERFORMANCE
-CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_course_enrollments_user_id ON course_enrollments(user_id);
-CREATE INDEX IF NOT EXISTS idx_course_enrollments_course_id ON course_enrollments(course_id);
-CREATE INDEX IF NOT EXISTS idx_certificates_user_id ON certificates(user_id);
-CREATE INDEX IF NOT EXISTS idx_certificates_hash ON certificates(certificate_hash);
-CREATE INDEX IF NOT EXISTS idx_mission_progress_user_id ON mission_progress(user_id);
-CREATE INDEX IF NOT EXISTS idx_lesson_progress_user_id ON lesson_progress(user_id);
-
--- 7. CONFIGURAR RLS PARA USER_PROFILES
-ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "user_profiles_select_own" ON public.user_profiles;
-CREATE POLICY "user_profiles_select_own" ON public.user_profiles
-  FOR SELECT USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "user_profiles_insert_own" ON public.user_profiles;
-CREATE POLICY "user_profiles_insert_own" ON public.user_profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "user_profiles_update_own" ON public.user_profiles;
-CREATE POLICY "user_profiles_update_own" ON public.user_profiles
-  FOR UPDATE USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "user_profiles_admin_access" ON public.user_profiles;
-CREATE POLICY "user_profiles_admin_access" ON public.user_profiles
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
-
--- 8. CONFIGURAR RLS PARA COURSE_ENROLLMENTS
-ALTER TABLE public.course_enrollments ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "enrollments_select_own" ON public.course_enrollments;
-CREATE POLICY "enrollments_select_own" ON public.course_enrollments
-  FOR SELECT USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "enrollments_insert_own" ON public.course_enrollments;
-CREATE POLICY "enrollments_insert_own" ON public.course_enrollments
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "enrollments_update_own" ON public.course_enrollments;
-CREATE POLICY "enrollments_update_own" ON public.course_enrollments
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- 9. CONFIGURAR RLS PARA MISSION_PROGRESS
-ALTER TABLE public.mission_progress ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "mission_progress_select_own" ON public.mission_progress;
-CREATE POLICY "mission_progress_select_own" ON public.mission_progress
-  FOR SELECT USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "mission_progress_insert_own" ON public.mission_progress;
-CREATE POLICY "mission_progress_insert_own" ON public.mission_progress
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "mission_progress_update_own" ON public.mission_progress;
-CREATE POLICY "mission_progress_update_own" ON public.mission_progress
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- 10. CONFIGURAR RLS PARA LESSON_PROGRESS
-ALTER TABLE public.lesson_progress ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "lesson_progress_select_own" ON public.lesson_progress;
-CREATE POLICY "lesson_progress_select_own" ON public.lesson_progress
-  FOR SELECT USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "lesson_progress_insert_own" ON public.lesson_progress;
-CREATE POLICY "lesson_progress_insert_own" ON public.lesson_progress
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "lesson_progress_update_own" ON public.lesson_progress;
-CREATE POLICY "lesson_progress_update_own" ON public.lesson_progress
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- 11. CRIAR TRIGGERS PARA UPDATED_AT
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
-CREATE TRIGGER update_user_profiles_updated_at 
-    BEFORE UPDATE ON user_profiles 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_lesson_progress_updated_at ON lesson_progress;
-CREATE TRIGGER update_lesson_progress_updated_at 
-    BEFORE UPDATE ON lesson_progress 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- 12. CONCEDER PERMISSÕES
-GRANT SELECT, INSERT, UPDATE, DELETE ON user_profiles TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON course_enrollments TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON mission_progress TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON lesson_progress TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON certificates TO authenticated;
-
--- 13. INSERIR DADOS PADRÃO PARA TESTES
-INSERT INTO public.user_profiles (user_id, interests, skill_level, learning_goals)
-SELECT 
-  id,
-  ARRAY['cibersegurança', 'programação'],
-  'beginner',
-  ARRAY['aprender fundamentos', 'obter certificação']
-FROM auth.users
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.user_profiles WHERE user_id = auth.users.id
-)
-LIMIT 5;
-
-COMMIT;
-```
-
-## 3. Estrutura de Arquivos Corrigidos
-
-### 3.1 Serviços Atualizados
-
-#### `src/services/recommendationService.ts`
-```typescript
-import { supabase } from '@/integrations/supabase/client';
-import { cache, CACHE_KEYS, cacheWithFallback } from '@/utils/cache';
-
-export interface UserProfile {
-  id?: string;
-  user_id: string;
-  interests: string[];
-  skill_level: 'beginner' | 'intermediate' | 'advanced';
-  learning_goals: string[];
-  preferred_duration: 'short' | 'medium' | 'long';
-  completed_courses: string[];
-  current_courses: string[];
-  favorite_categories: string[];
-  learning_style: 'visual' | 'auditory' | 'kinesthetic' | 'reading';
-  time_availability: 'low' | 'medium' | 'high';
-  level: number;
-  total_points: number;
-  activity_pattern?: string;
-  difficulty_preference?: string;
-  preferred_categories: string[];
-  created_at?: string;
-  updated_at?: string;
-}
-
-export class RecommendationService {
-  static async getUserProfile(userId: string): Promise<UserProfile | null> {
-    return cacheWithFallback(
-      CACHE_KEYS.USER_PROFILE(userId),
-      async () => {
-        try {
-          const { data: profile, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (error && error.code !== 'PGRST116') {
-            throw error;
-          }
-
-          if (!profile) {
-            // Criar perfil padrão
-            const defaultProfile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'> = {
-              user_id: userId,
-              interests: ['cibersegurança'],
-              skill_level: 'beginner',
-              learning_goals: ['aprender fundamentos'],
-              preferred_duration: 'medium',
-              completed_courses: [],
-              current_courses: [],
-              favorite_categories: ['geral'],
-              learning_style: 'visual',
-              time_availability: 'medium',
-              level: 1,
-              total_points: 0,
-              activity_pattern: 'mixed',
-              difficulty_preference: 'medium',
-              preferred_categories: ['geral']
-            };
-
-            const { data: newProfile, error: createError } = await supabase
-              .from('user_profiles')
-              .insert(defaultProfile)
-              .select()
-              .single();
-
-            if (createError) {
-              console.error('Erro ao criar perfil padrão:', createError);
-              return defaultProfile as UserProfile;
-            }
-
-            return newProfile;
-          }
-
-          return profile;
-        } catch (error) {
-          console.error('Erro ao buscar perfil do usuário:', error);
-          return null;
-        }
-      },
-      2 * 60 * 1000
-    );
-  }
-
-  static async updateUserProfile(userId: string, profile: Partial<UserProfile>): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .upsert({ user_id: userId, ...profile });
-
-      if (error) throw error;
-      
-      // Limpar cache
-      cache.delete(CACHE_KEYS.USER_PROFILE(userId));
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar perfil:', error);
-      return false;
-    }
-  }
-}
-```
-
-### 3.2 Hooks Personalizados
-
-#### `src/hooks/useUserProfile.ts`
-```typescript
-import { useState, useEffect } from 'react';
-import { RecommendationService, UserProfile } from '@/services/recommendationService';
-import { useAuth } from '@/contexts/AuthContext';
-
-export function useUserProfile() {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchProfile = async () => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const userProfile = await RecommendationService.getUserProfile(user.id);
-      setProfile(userProfile);
-    } catch (err) {
-      setError('Erro ao carregar perfil do usuário');
-      console.error('Erro no useUserProfile:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProfile();
-  }, [user?.id]);
-
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user?.id) return false;
-
-    try {
-      const success = await RecommendationService.updateUserProfile(user.id, updates);
-      if (success) {
-        await fetchProfile(); // Recarregar perfil
-      }
-      return success;
-    } catch (err) {
-      console.error('Erro ao atualizar perfil:', err);
-      return false;
-    }
-  };
-
-  return { 
-    profile, 
-    loading, 
-    error, 
-    refetch: fetchProfile,
-    updateProfile
-  };
-}
-```
-
-#### `src/hooks/useCertificates.ts`
-```typescript
-import { useState, useEffect } from 'react';
-import { certificateService, Certificate } from '@/services/certificateService';
-import { useAuth } from '@/contexts/AuthContext';
-
-export function useCertificates() {
-  const { user } = useAuth();
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchCertificates = async () => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const userCertificates = await certificateService.getUserCertificates(user.id);
-      setCertificates(userCertificates);
-    } catch (err) {
-      setError('Erro ao carregar certificados');
-      console.error('Erro no useCertificates:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCertificates();
-  }, [user?.id]);
-
-  return { 
-    certificates, 
-    loading, 
-    error, 
-    refetch: fetchCertificates 
-  };
-}
-```
-
-### 3.3 Componentes com Tratamento de Erro
-
-#### `src/components/common/ErrorBoundary.tsx`
-```typescript
-import React from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-interface ErrorBoundaryProps {
-  error: string | null;
-  onRetry?: () => void;
-  children?: React.ReactNode;
-}
-
-export function ErrorBoundary({ error, onRetry, children }: ErrorBoundaryProps) {
-  if (!error) {
-    return <>{children}</>;
-  }
-
-  return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-600" />
-        </div>
-        <CardTitle className="text-red-800">Ops! Algo deu errado</CardTitle>
-      </CardHeader>
-      <CardContent className="text-center space-y-4">
-        <p className="text-gray-600">{error}</p>
-        {onRetry && (
-          <Button onClick={onRetry} variant="outline" className="w-full">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Tentar Novamente
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-#### `src/components/common/LoadingSpinner.tsx`
-```typescript
-import React from 'react';
-import { Loader2 } from 'lucide-react';
-
-interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
-  text?: string;
-}
-
-export function LoadingSpinner({ size = 'md', text = 'Carregando...' }: LoadingSpinnerProps) {
-  const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-6 h-6',
-    lg: 'w-8 h-8'
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center p-8 space-y-4">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-blue-600`} />
-      <p className="text-gray-600 text-sm">{text}</p>
-    </div>
-  );
-}
-```
-
-## 4. Testes de Validação
-
-### 4.1 Testes de Integração
-
-#### `src/tests/services/recommendationService.test.ts`
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { RecommendationService } from '@/services/recommendationService';
-
-describe('RecommendationService', () => {
-  beforeEach(() => {
-    // Setup de teste
-  });
-
-  it('deve criar perfil padrão quando usuário não existe', async () => {
-    const userId = 'test-user-id';
-    const profile = await RecommendationService.getUserProfile(userId);
-    
-    expect(profile).toBeTruthy();
-    expect(profile?.user_id).toBe(userId);
-    expect(profile?.skill_level).toBe('beginner');
-  });
-
-  it('deve retornar perfil existente', async () => {
-    // Teste com perfil existente
-  });
-
-  it('deve atualizar perfil corretamente', async () => {
-    // Teste de atualização
-  });
-});
-```
-
-### 4.2 Testes de Componentes
-
-#### `src/tests/hooks/useUserProfile.test.ts`
-```typescript
-import { renderHook, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
-import { useUserProfile } from '@/hooks/useUserProfile';
-
-describe('useUserProfile', () => {
-  it('deve carregar perfil do usuário', async () => {
-    const { result } = renderHook(() => useUserProfile());
-    
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-    
-    expect(result.current.profile).toBeTruthy();
-  });
-});
-```
-
-## 5. Monitoramento e Logs
-
-### 5.1 Sistema de Logs
-
-#### `src/utils/logger.ts`
-```typescript
-export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug'
-}
-
-export interface LogEntry {
-  level: LogLevel;
-  message: string;
-  timestamp: string;
-  userId?: string;
-  context?: Record<string, any>;
-}
-
-class Logger {
-  private logs: LogEntry[] = [];
-
-  log(level: LogLevel, message: string, context?: Record<string, any>) {
-    const entry: LogEntry = {
-      level,
-      message,
-      timestamp: new Date().toISOString(),
-      context
-    };
-
-    this.logs.push(entry);
-    
-    // Enviar para console em desenvolvimento
-    if (process.env.NODE_ENV === 'development') {
-      console[level](message, context);
-    }
-
-    // Enviar para serviço de monitoramento em produção
-    if (process.env.NODE_ENV === 'production' && level === LogLevel.ERROR) {
-      this.sendToMonitoring(entry);
-    }
-  }
-
-  error(message: string, context?: Record<string, any>) {
-    this.log(LogLevel.ERROR, message, context);
-  }
-
-  warn(message: string, context?: Record<string, any>) {
-    this.log(LogLevel.WARN, message, context);
-  }
-
-  info(message: string, context?: Record<string, any>) {
-    this.log(LogLevel.INFO, message, context);
-  }
-
-  private async sendToMonitoring(entry: LogEntry) {
-    // Implementar envio para serviço de monitoramento
-    try {
-      await fetch('/api/logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
-      });
-    } catch (error) {
-      console.error('Erro ao enviar log:', error);
-    }
-  }
-}
-
-export const logger = new Logger();
-```
-
-## 6. Checklist Final de Implementação
-
-### 6.1 Pré-Requisitos
-- [ ] Backup completo do banco de dados
-- [ ] Ambiente de staging configurado
-- [ ] Testes de conectividade validados
-- [ ] Dependências atualizadas
-
-### 6.2 Implementação
-- [ ] Executar migration crítica
-- [ ] Atualizar todos os serviços
-- [ ] Implementar hooks personalizados
-- [ ] Criar componentes com tratamento de erro
-- [ ] Configurar sistema de logs
-
-### 6.3 Validação
-- [ ] Testes unitários passando
-- [ ] Testes de integração validados
-- [ ] Fluxos críticos funcionando
-- [ ] Performance dentro dos parâmetros
-
-### 6.4 Deploy
-- [ ] Deploy em staging
-- [ ] Testes de aceitação
-- [ ] Deploy em produção
-- [ ] Monitoramento ativo
+# 🔧 Plano de Implementação Técnica - Integração Supabase
+## Esquads Academy - Configuração Completa e Migrações
+
+**Data de Criação**: 2025-01-25  
+**Versão**: 2.0  
+**Responsável**: Sistema de IA  
+**Status**: 🔄 Em Implementação  
 
 ---
 
-**Documento Técnico**: Plano de Implementação Esquads Academy
-**Versão**: 1.0
-**Data**: 15 de Dezembro de 2024
-**Status**: Pronto para Implementação
+## 📋 1. ANÁLISE DO ESTADO ATUAL
+
+### 1.1 Configurações Existentes
+
+#### ✅ **Estrutura Atual Identificada**
+- **Cliente Supabase**: Configurado em `src/integrations/supabase/client.ts`
+- **Variáveis de Ambiente**: Template em `env.example`
+- **Migrações**: 100+ arquivos SQL em `supabase/migrations/`
+- **Documentação**: Guias existentes em `docs/`
+- **Serviços**: Integração em múltiplos serviços
+
+#### 🔍 **Status das Configurações**
+```typescript
+// Configuração atual do cliente
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// Configurações de segurança implementadas
+auth: {
+  autoRefreshToken: true,
+  persistSession: true,
+  detectSessionInUrl: false,
+  flowType: 'pkce',
+  debug: import.meta.env.DEV
+}
+```
+
+#### 📊 **Migrações Disponíveis**
+- **Total**: 100+ arquivos de migração
+- **Período**: 2024-12-15 até 2025-10-17
+- **Categorias**: Schema inicial, RLS, Gamificação, Notificações, Segurança
+- **Última**: `20251017_create_notifications_system.sql`
+
+### 1.2 Problemas Identificados
+
+#### ❌ **Configuração de Ambiente**
+- Arquivo `.env.local` não existe
+- Variáveis de ambiente não configuradas
+- Conexão com Supabase não estabelecida
+
+#### ❌ **Estado das Migrações**
+- Migrações não aplicadas ao banco remoto
+- Possível inconsistência entre migrações
+- Falta de validação do estado atual
+
+#### ❌ **Segurança**
+- RLS policies podem não estar ativas
+- Permissões não validadas
+- Autenticação não testada
+
+---
+
+## 🎯 2. PLANO DE CONFIGURAÇÃO
+
+### 2.1 Configuração de Variáveis de Ambiente
+
+#### **Passo 1: Criar Arquivo de Configuração**
+```bash
+# Windows PowerShell
+cd "c:\Users\LENOVO\Documents\Esquads-Zero"
+Copy-Item "env.example" ".env.local"
+```
+
+#### **Passo 2: Obter Credenciais do Supabase**
+1. **Acesse o Dashboard**: https://supabase.com/dashboard
+2. **Selecione o Projeto**: Esquads Academy
+3. **Navegue para Settings → API**
+4. **Copie as Credenciais**:
+   - **Project URL** → `VITE_SUPABASE_URL`
+   - **anon public** → `VITE_SUPABASE_ANON_KEY`
+   - **service_role** → `SUPABASE_SERVICE_ROLE_KEY`
+
+#### **Passo 3: Configurar .env.local**
+```env
+# Configuração do Supabase para Esquads Academy
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Configurações do servidor
+PORT=3001
+NODE_ENV=development
+VITE_PORT=5173
+
+# API Configuration
+VITE_API_URL=http://localhost:3001
+
+# Configurações opcionais para Edge Functions
+API_OPENAI=your-openai-key
+API_GEMINI=your-gemini-key
+API_REPLICATE=your-replicate-token
+```
+
+### 2.2 Validação da Conexão
+
+#### **Script de Teste de Conexão**
+```javascript
+// test-supabase-connection.js
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+async function testConnection() {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Teste básico de conexão
+    const { data, error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Erro de conexão:', error.message);
+      return false;
+    }
+    
+    console.log('✅ Conexão com Supabase estabelecida com sucesso!');
+    return true;
+  } catch (error) {
+    console.error('❌ Erro crítico:', error.message);
+    return false;
+  }
+}
+
+testConnection();
+```
+
+#### **Executar Teste**
+```bash
+# Instalar dependências se necessário
+npm install @supabase/supabase-js dotenv
+
+# Executar teste
+node test-supabase-connection.js
+```
+
+---
+
+## 🗄️ 3. APLICAÇÃO DE MIGRAÇÕES
+
+### 3.1 Estratégia de Migração Segura
+
+#### **Análise de Dependências**
+```sql
+-- Ordem recomendada de aplicação:
+-- 1. Schema inicial (001_initial_schema.sql)
+-- 2. RLS Policies (002_rls_policies.sql)
+-- 3. Correções críticas (20241215_critical_fixes.sql)
+-- 4. Gamificação (20251009_*.sql)
+-- 5. Notificações (20251017_create_notifications_system.sql)
+```
+
+#### **Passo 1: Backup do Estado Atual**
+```bash
+# Fazer backup antes de aplicar migrações
+npx supabase db dump --file backup-$(date +%Y%m%d).sql
+```
+
+#### **Passo 2: Verificar Estado Atual**
+```sql
+-- Verificar tabelas existentes
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY table_name;
+
+-- Verificar migrações aplicadas
+SELECT * FROM supabase_migrations.schema_migrations
+ORDER BY version;
+```
+
+#### **Passo 3: Aplicar Migrações Essenciais**
+
+**3.1 Schema Inicial**
+```bash
+# Aplicar schema inicial se não existir
+psql -h your-host -U postgres -d postgres -f supabase/migrations/001_initial_schema.sql
+```
+
+**3.2 RLS Policies**
+```bash
+# Aplicar políticas de segurança
+psql -h your-host -U postgres -d postgres -f supabase/migrations/002_rls_policies.sql
+```
+
+**3.3 Correções Críticas**
+```bash
+# Aplicar correções críticas mais recentes
+psql -h your-host -U postgres -d postgres -f supabase/migrations/20250117_fix_users_rls_recursion_v2.sql
+```
+
+### 3.2 Migrações por Categoria
+
+#### **Gamificação (Outubro 2025)**
+```bash
+# Aplicar sistema de gamificação
+for file in supabase/migrations/20251009_*.sql; do
+  echo "Aplicando: $file"
+  psql -h your-host -U postgres -d postgres -f "$file"
+done
+```
+
+#### **Sistema de Notificações**
+```bash
+# Aplicar sistema de notificações inteligente
+psql -h your-host -U postgres -d postgres -f supabase/migrations/20251017_create_notifications_system.sql
+```
+
+#### **Certificações e MFA**
+```bash
+# Aplicar sistema de certificações
+psql -h your-host -U postgres -d postgres -f supabase/migrations/20250125_certification_questions_system.sql
+
+# Aplicar MFA/OTP
+psql -h your-host -U postgres -d postgres -f supabase/migrations/20251015_add_mfa_otp.sql
+```
+
+### 3.3 Script Automatizado de Migração
+
+```bash
+#!/bin/bash
+# migrate-esquads.sh
+
+set -e
+
+echo "🚀 Iniciando migração do Esquads Academy..."
+
+# Verificar conexão
+echo "📡 Testando conexão..."
+node test-supabase-connection.js || exit 1
+
+# Fazer backup
+echo "💾 Criando backup..."
+npx supabase db dump --file "backup-$(date +%Y%m%d-%H%M%S).sql"
+
+# Aplicar migrações essenciais
+echo "🔧 Aplicando migrações essenciais..."
+
+# Schema inicial
+if ! psql -h $SUPABASE_HOST -U postgres -d postgres -c "SELECT 1 FROM users LIMIT 1;" 2>/dev/null; then
+  echo "📋 Aplicando schema inicial..."
+  psql -h $SUPABASE_HOST -U postgres -d postgres -f supabase/migrations/001_initial_schema.sql
+fi
+
+# RLS Policies
+echo "🔒 Aplicando políticas de segurança..."
+psql -h $SUPABASE_HOST -U postgres -d postgres -f supabase/migrations/002_rls_policies.sql
+
+# Gamificação
+echo "🎮 Aplicando sistema de gamificação..."
+for file in supabase/migrations/20251009_*.sql; do
+  echo "  - $(basename $file)"
+  psql -h $SUPABASE_HOST -U postgres -d postgres -f "$file"
+done
+
+# Notificações
+echo "🔔 Aplicando sistema de notificações..."
+psql -h $SUPABASE_HOST -U postgres -d postgres -f supabase/migrations/20251017_create_notifications_system.sql
+
+echo "✅ Migração concluída com sucesso!"
+```
+
+---
+
+## 🔒 4. VALIDAÇÃO DE SEGURANÇA
+
+### 4.1 Verificação de RLS Policies
+
+#### **Script de Validação**
+```sql
+-- Verificar se RLS está habilitado em todas as tabelas
+SELECT 
+  schemaname,
+  tablename,
+  rowsecurity as rls_enabled
+FROM pg_tables 
+WHERE schemaname = 'public'
+ORDER BY tablename;
+
+-- Verificar políticas existentes
+SELECT 
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual
+FROM pg_policies 
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;
+```
+
+#### **Validação de Permissões**
+```sql
+-- Verificar permissões para role authenticated
+SELECT 
+  table_name,
+  privilege_type
+FROM information_schema.role_table_grants 
+WHERE grantee = 'authenticated'
+ORDER BY table_name;
+
+-- Verificar permissões para role anon
+SELECT 
+  table_name,
+  privilege_type
+FROM information_schema.role_table_grants 
+WHERE grantee = 'anon'
+ORDER BY table_name;
+```
+
+### 4.2 Teste de Autenticação
+
+#### **Script de Teste de Auth**
+```javascript
+// test-auth-flow.js
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+
+async function testAuthFlow() {
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_ANON_KEY
+  );
+
+  try {
+    // Teste de registro
+    console.log('🔐 Testando registro...');
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: 'test@esquads.com',
+      password: 'TestPassword123!'
+    });
+
+    if (signUpError) {
+      console.log('ℹ️ Registro:', signUpError.message);
+    } else {
+      console.log('✅ Registro funcionando');
+    }
+
+    // Teste de login
+    console.log('🔑 Testando login...');
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: 'admin@esquads.com',
+      password: 'admin123'
+    });
+
+    if (signInError) {
+      console.log('ℹ️ Login:', signInError.message);
+    } else {
+      console.log('✅ Login funcionando');
+      
+      // Teste de acesso a dados
+      console.log('📊 Testando acesso a dados...');
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .limit(1);
+
+      if (userError) {
+        console.log('❌ Erro de acesso:', userError.message);
+      } else {
+        console.log('✅ Acesso a dados funcionando');
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Erro crítico:', error.message);
+  }
+}
+
+testAuthFlow();
+```
+
+### 4.3 Validação de Integridade
+
+#### **Verificação de Constraints**
+```sql
+-- Verificar foreign keys
+SELECT 
+  tc.table_name,
+  tc.constraint_name,
+  tc.constraint_type,
+  kcu.column_name,
+  ccu.table_name AS foreign_table_name,
+  ccu.column_name AS foreign_column_name
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kcu
+  ON tc.constraint_name = kcu.constraint_name
+  AND tc.table_schema = kcu.table_schema
+JOIN information_schema.constraint_column_usage AS ccu
+  ON ccu.constraint_name = tc.constraint_name
+  AND ccu.table_schema = tc.table_schema
+WHERE tc.constraint_type = 'FOREIGN KEY'
+  AND tc.table_schema = 'public'
+ORDER BY tc.table_name;
+
+-- Verificar índices
+SELECT 
+  schemaname,
+  tablename,
+  indexname,
+  indexdef
+FROM pg_indexes 
+WHERE schemaname = 'public'
+ORDER BY tablename, indexname;
+```
+
+---
+
+## 🧪 5. TESTES DE INTEGRAÇÃO
+
+### 5.1 Testes Funcionais
+
+#### **Teste de CRUD Básico**
+```javascript
+// test-crud-operations.js
+async function testCRUDOperations() {
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_ANON_KEY
+  );
+
+  try {
+    // CREATE
+    console.log('📝 Testando CREATE...');
+    const { data: createData, error: createError } = await supabase
+      .from('users')
+      .insert([
+        {
+          email: 'test-crud@esquads.com',
+          full_name: 'Test CRUD User',
+          role: 'student'
+        }
+      ])
+      .select();
+
+    if (createError) throw createError;
+    console.log('✅ CREATE funcionando');
+    const userId = createData[0].id;
+
+    // READ
+    console.log('📖 Testando READ...');
+    const { data: readData, error: readError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId);
+
+    if (readError) throw readError;
+    console.log('✅ READ funcionando');
+
+    // UPDATE
+    console.log('✏️ Testando UPDATE...');
+    const { data: updateData, error: updateError } = await supabase
+      .from('users')
+      .update({ full_name: 'Updated Test User' })
+      .eq('id', userId)
+      .select();
+
+    if (updateError) throw updateError;
+    console.log('✅ UPDATE funcionando');
+
+    // DELETE
+    console.log('🗑️ Testando DELETE...');
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (deleteError) throw deleteError;
+    console.log('✅ DELETE funcionando');
+
+    console.log('🎉 Todos os testes CRUD passaram!');
+
+  } catch (error) {
+    console.error('❌ Erro nos testes CRUD:', error.message);
+  }
+}
+```
+
+#### **Teste de Gamificação**
+```javascript
+// test-gamification.js
+async function testGamification() {
+  console.log('🎮 Testando sistema de gamificação...');
+
+  try {
+    // Teste de achievements
+    const { data: achievements, error: achError } = await supabase
+      .from('achievements')
+      .select('*')
+      .limit(5);
+
+    if (achError) throw achError;
+    console.log('✅ Achievements:', achievements.length, 'encontrados');
+
+    // Teste de badges
+    const { data: badges, error: badgeError } = await supabase
+      .from('badges')
+      .select('*')
+      .limit(5);
+
+    if (badgeError) throw badgeError;
+    console.log('✅ Badges:', badges.length, 'encontrados');
+
+    // Teste de learning paths
+    const { data: paths, error: pathError } = await supabase
+      .from('learning_paths')
+      .select('*')
+      .limit(5);
+
+    if (pathError) throw pathError;
+    console.log('✅ Learning Paths:', paths.length, 'encontrados');
+
+  } catch (error) {
+    console.error('❌ Erro nos testes de gamificação:', error.message);
+  }
+}
+```
+
+### 5.2 Testes de Performance
+
+#### **Teste de Latência**
+```javascript
+// test-performance.js
+async function testPerformance() {
+  console.log('⚡ Testando performance...');
+
+  const tests = [
+    { name: 'Select Users', query: () => supabase.from('users').select('*').limit(100) },
+    { name: 'Select Missions', query: () => supabase.from('missions').select('*').limit(50) },
+    { name: 'Select Notifications', query: () => supabase.from('notifications').select('*').limit(50) }
+  ];
+
+  for (const test of tests) {
+    const start = Date.now();
+    try {
+      const { data, error } = await test.query();
+      const duration = Date.now() - start;
+      
+      if (error) throw error;
+      
+      console.log(`✅ ${test.name}: ${duration}ms (${data.length} registros)`);
+      
+      if (duration > 1000) {
+        console.log(`⚠️ ${test.name}: Latência alta (${duration}ms)`);
+      }
+    } catch (error) {
+      console.error(`❌ ${test.name}: ${error.message}`);
+    }
+  }
+}
+```
+
+---
+
+## 🔧 6. TROUBLESHOOTING
+
+### 6.1 Problemas Comuns
+
+#### **Erro: "fetch failed"**
+```bash
+# Verificar conectividade
+ping your-project-id.supabase.co
+
+# Verificar DNS
+nslookup your-project-id.supabase.co
+
+# Verificar firewall
+Test-NetConnection -ComputerName your-project-id.supabase.co -Port 443
+```
+
+#### **Erro: "Invalid API key"**
+```javascript
+// Verificar formato da chave
+const key = process.env.VITE_SUPABASE_ANON_KEY;
+console.log('Tamanho da chave:', key.length);
+console.log('Começa com eyJ:', key.startsWith('eyJ'));
+```
+
+#### **Erro: "Row Level Security"**
+```sql
+-- Verificar se RLS está habilitado
+SELECT tablename, rowsecurity 
+FROM pg_tables 
+WHERE schemaname = 'public' AND tablename = 'your_table';
+
+-- Verificar políticas
+SELECT * FROM pg_policies WHERE tablename = 'your_table';
+```
+
+### 6.2 Scripts de Diagnóstico
+
+#### **Diagnóstico Completo**
+```javascript
+// diagnose-esquads.js
+async function diagnoseSystem() {
+  console.log('🔍 Iniciando diagnóstico completo...');
+
+  // 1. Verificar variáveis de ambiente
+  console.log('\n📋 Variáveis de Ambiente:');
+  const requiredVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'];
+  for (const varName of requiredVars) {
+    const value = process.env[varName];
+    console.log(`  ${varName}: ${value ? '✅ Definida' : '❌ Não definida'}`);
+  }
+
+  // 2. Testar conexão
+  console.log('\n🌐 Teste de Conexão:');
+  try {
+    const response = await fetch(process.env.VITE_SUPABASE_URL + '/rest/v1/', {
+      headers: {
+        'apikey': process.env.VITE_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${process.env.VITE_SUPABASE_ANON_KEY}`
+      }
+    });
+    console.log(`  Status: ${response.status} ${response.statusText}`);
+  } catch (error) {
+    console.log(`  ❌ Erro: ${error.message}`);
+  }
+
+  // 3. Verificar tabelas
+  console.log('\n📊 Verificação de Tabelas:');
+  const tables = ['users', 'missions', 'achievements', 'notifications'];
+  for (const table of tables) {
+    try {
+      const { data, error } = await supabase.from(table).select('count').limit(1);
+      console.log(`  ${table}: ${error ? '❌ Erro' : '✅ OK'}`);
+    } catch (error) {
+      console.log(`  ${table}: ❌ ${error.message}`);
+    }
+  }
+
+  console.log('\n🏁 Diagnóstico concluído!');
+}
+```
+
+### 6.3 Logs e Monitoramento
+
+#### **Configuração de Logs**
+```javascript
+// logger-config.js
+class SupabaseLogger {
+  static log(level, message, data = {}) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level,
+      message,
+      data,
+      environment: process.env.NODE_ENV
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[${timestamp}] ${level}: ${message}`, data);
+    }
+
+    // Em produção, enviar para serviço de log
+    if (process.env.NODE_ENV === 'production' && level === 'ERROR') {
+      // Implementar envio para serviço de monitoramento
+    }
+  }
+
+  static error(message, data) {
+    this.log('ERROR', message, data);
+  }
+
+  static warn(message, data) {
+    this.log('WARN', message, data);
+  }
+
+  static info(message, data) {
+    this.log('INFO', message, data);
+  }
+}
+```
+
+---
+
+## 📋 7. CHECKLIST DE IMPLEMENTAÇÃO
+
+### 7.1 Pré-Implementação
+- [ ] Backup do projeto atual
+- [ ] Verificação de dependências
+- [ ] Acesso ao dashboard Supabase
+- [ ] Credenciais válidas obtidas
+
+### 7.2 Configuração
+- [ ] Arquivo `.env.local` criado
+- [ ] Variáveis de ambiente configuradas
+- [ ] Teste de conexão executado
+- [ ] Cliente Supabase validado
+
+### 7.3 Migrações
+- [ ] Backup do banco atual
+- [ ] Schema inicial aplicado
+- [ ] RLS policies aplicadas
+- [ ] Migrações de gamificação aplicadas
+- [ ] Sistema de notificações aplicado
+- [ ] MFA/OTP configurado
+
+### 7.4 Validação
+- [ ] RLS policies verificadas
+- [ ] Permissões testadas
+- [ ] Autenticação funcionando
+- [ ] CRUD operations testadas
+- [ ] Performance validada
+
+### 7.5 Testes
+- [ ] Testes de integração executados
+- [ ] Testes de segurança realizados
+- [ ] Testes de performance concluídos
+- [ ] Logs configurados
+
+### 7.6 Documentação
+- [ ] Configurações documentadas
+- [ ] Procedimentos registrados
+- [ ] Troubleshooting atualizado
+- [ ] Equipe treinada
+
+---
+
+## 🚀 8. PRÓXIMOS PASSOS
+
+### 8.1 Implementação Imediata
+1. **Configurar variáveis de ambiente**
+2. **Testar conexão básica**
+3. **Aplicar migrações essenciais**
+4. **Validar segurança**
+
+### 8.2 Otimizações Futuras
+1. **Configurar Edge Functions**
+2. **Implementar cache Redis**
+3. **Configurar monitoramento**
+4. **Otimizar queries**
+
+### 8.3 Monitoramento Contínuo
+1. **Configurar alertas**
+2. **Implementar métricas**
+3. **Revisar performance**
+4. **Atualizar documentação**
+
+---
+
+## 📞 SUPORTE E CONTATOS
+
+### Recursos Úteis
+- **Supabase Docs**: https://supabase.com/docs
+- **Dashboard**: https://supabase.com/dashboard
+- **Status Page**: https://status.supabase.com
+- **Community**: https://github.com/supabase/supabase/discussions
+
+### Comandos de Emergência
+```bash
+# Reverter última migração
+npx supabase db reset
+
+# Restaurar backup
+psql -h your-host -U postgres -d postgres -f backup-file.sql
+
+# Verificar status
+npx supabase status
+```
+
+---
+
+**Status Final**: 📋 Documento Técnico Completo  
+**Próxima Ação**: Executar configuração seguindo este plano  
+**Estimativa**: 2-4 horas para implementação completa

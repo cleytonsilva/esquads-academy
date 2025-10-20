@@ -53,7 +53,7 @@ CREATE POLICY "users_update_final" ON public.users
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS public.user_profiles (
-  id uuid DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id uuid DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name text,
   avatar_url text,

@@ -83,6 +83,22 @@ export function useSocialChallenges() {
     if (!user) return;
 
     try {
+      // Primeiro buscar os IDs dos desafios do usuário
+      const { data: participantData, error: participantError } = await supabase
+        .from('challenge_participants')
+        .select('challenge_id')
+        .eq('user_id', user.id);
+
+      if (participantError) throw participantError;
+
+      const challengeIds = participantData?.map(p => p.challenge_id) || [];
+
+      if (challengeIds.length === 0) {
+        setUserChallenges([]);
+        return;
+      }
+
+      // Depois buscar os desafios completos
       const { data, error } = await supabase
         .from('social_challenges')
         .select(`
@@ -93,12 +109,7 @@ export function useSocialChallenges() {
             user:users(id, full_name, avatar_url)
           )
         `)
-        .in('id', 
-          supabase
-            .from('challenge_participants')
-            .select('challenge_id')
-            .eq('user_id', user.id)
-        )
+        .in('id', challengeIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

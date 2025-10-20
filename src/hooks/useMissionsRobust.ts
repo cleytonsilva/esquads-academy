@@ -8,62 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCachedUserData, useCache } from '@/hooks/useCache';
 import { supabase } from '@/integrations/supabase/client';
 import { CACHE_TTL } from '@/services/cacheService';
-import { MISSION_DELIVERY_MODES, MISSION_ENVIRONMENTS } from '@/utils/constants';
-
-type MissionEnvironment = typeof MISSION_ENVIRONMENTS[keyof typeof MISSION_ENVIRONMENTS];
-type MissionDeliveryMode = typeof MISSION_DELIVERY_MODES[keyof typeof MISSION_DELIVERY_MODES];
-
-const resolveEnvironment = (raw?: string | null, category?: string): MissionEnvironment => {
-  const normalized = (raw || '').toLowerCase();
-  const normalizedCategory = (category || '').toLowerCase();
-
-  if (normalized.includes('firewall') || normalizedCategory.includes('firewall')) {
-    return MISSION_ENVIRONMENTS.FIREWALL;
-  }
-
-  if (normalized.includes('forensic') || normalized.includes('forense') || normalizedCategory.includes('forense')) {
-    return MISSION_ENVIRONMENTS.FORENSICS;
-  }
-
-  if (normalized.includes('shell') || normalized.includes('terminal')) {
-    return MISSION_ENVIRONMENTS.INCIDENT_RESPONSE;
-  }
-
-  return MISSION_ENVIRONMENTS.INCIDENT_RESPONSE;
-};
-
-const resolveDeliveryMode = (environment: MissionEnvironment, raw?: string | null): MissionDeliveryMode => {
-  const normalized = (raw || '').toLowerCase();
-
-  if (normalized.includes('config')) {
-    return MISSION_DELIVERY_MODES.CONFIG_PANEL;
-  }
-
-  if (normalized.includes('hybrid')) {
-    return MISSION_DELIVERY_MODES.HYBRID;
-  }
-
-  if (normalized.includes('terminal')) {
-    return MISSION_DELIVERY_MODES.TERMINAL;
-  }
-
-  if (environment === MISSION_ENVIRONMENTS.FIREWALL) {
-    return MISSION_DELIVERY_MODES.CONFIG_PANEL;
-  }
-
-  if (environment === MISSION_ENVIRONMENTS.FORENSICS) {
-    return MISSION_DELIVERY_MODES.HYBRID;
-  }
-
-  return MISSION_DELIVERY_MODES.TERMINAL;
-};
 
 export interface Mission {
   id: string;
   user_id: string;
   title: string;
   description: string;
-  type: 'daily' | 'weekly' | 'achievement' | 'challenge';
+  type: 'daily' | 'weekly' | 'achievement' | 'challenge' | 'coding' | 'terminal' | 'ctf';
   category: string;
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
@@ -76,13 +27,6 @@ export interface Mission {
   hints?: string[];
   estimated_time?: number;
   tags?: string[];
-  environment: typeof MISSION_ENVIRONMENTS[keyof typeof MISSION_ENVIRONMENTS];
-  delivery_mode: typeof MISSION_DELIVERY_MODES[keyof typeof MISSION_DELIVERY_MODES];
-  xp_reward: number;
-  badge_reward?: string;
-  lives_required?: number;
-  unlock_requirement?: string;
-  flag_hint?: string;
   metadata?: {
     course_id?: string;
     lesson_id?: string;
@@ -148,7 +92,6 @@ interface UseMissionsReturn {
   isMissionCompleted: (missionId: string) => boolean;
   isMissionStarted: (missionId: string) => boolean;
   getMissionsByType: (type: string) => Mission[];
-  getMissionsByEnvironment: (environment: Mission['environment']) => Mission[];
   // Estados do terminal (compatibilidade)
   terminalState: {
     isOpen: boolean;
@@ -162,6 +105,10 @@ interface UseMissionsReturn {
   };
   openMissionTerminal: (missionId: string) => void;
   closeMissionTerminal: () => void;
+  updateTerminalCode: (code: string) => void;
+  runCodeInTerminal: (code: string) => Promise<any>;
+  startChatbotSession: (missionId: string) => Promise<void>;
+  sendChatMessage: (message: string) => Promise<string>;
 }
 
 export function useMissions(): UseMissionsReturn {
@@ -180,15 +127,14 @@ export function useMissions(): UseMissionsReturn {
         .from('missions')
         .select(`
           *,
-          mission_progress!left (
+          mission_attempts!left (
             user_id,
             status,
-            progress,
+            score,
+            xp_earned,
+            started_at,
             completed_at,
-            current_step,
-            total_steps,
-            created_at,
-            updated_at
+            progress_data
           )
         `)
         .order('created_at', { ascending: false });
@@ -207,41 +153,22 @@ export function useMissions(): UseMissionsReturn {
       // Mapear missões para o formato esperado
       return (missionsData || []).map(mission => {
         // Filtrar progresso apenas do usuário atual
-        const progress = mission.mission_progress?.find(p => p.user_id === user.id);
-
-        const environment = resolveEnvironment(mission.environment, mission.category);
-        const deliveryMode = resolveDeliveryMode(environment, mission.delivery_mode || mission.metadata?.delivery_mode);
-        const xpReward = typeof mission.xp_reward === 'number'
-          ? mission.xp_reward
-          : typeof mission.points_reward === 'number'
-            ? mission.points_reward
-            : typeof mission.points === 'number'
-              ? mission.points
-              : 10;
-        const badgeReward = mission.badge_reward || mission.metadata?.badge_reward || mission.metadata?.badge || undefined;
-        const livesRequired = typeof mission.lives_required === 'number'
-          ? mission.lives_required
-          : typeof mission.metadata?.lives_required === 'number'
-            ? mission.metadata?.lives_required
-            : environment === MISSION_ENVIRONMENTS.INCIDENT_RESPONSE
-              ? 1
-              : 0;
-        const unlockRequirement = mission.unlock_requirement || mission.metadata?.unlock_requirement || undefined;
-        const flagHint = mission.flag_hint || mission.metadata?.flag_hint || undefined;
-
+        const progress = mission.mission_attempts?.find(p => p.user_id === user.id);
+        
         return {
           id: mission.id || '',
           user_id: user.id,
           title: mission.title || 'Missão',
           description: mission.description || 'Descrição da missão',
-          type: ['daily', 'weekly', 'achievement', 'challenge'].includes(mission.type) 
+          type: ['daily', 'weekly', 'achievement', 'challenge', 'coding', 'terminal', 'ctf'].includes(mission.type) 
             ? mission.type 
             : 'daily',
           category: mission.category || 'geral',
           difficulty: ['easy', 'medium', 'hard'].includes(mission.difficulty) 
             ? mission.difficulty 
             : 'easy',
-          points: xpReward,
+          points: typeof mission.points_reward === 'number' ? mission.points_reward : 
+                  typeof mission.points === 'number' ? mission.points : 10,
           target_value: typeof mission.target_value === 'number' ? mission.target_value : 1,
           current_progress: progress?.progress || 0,
           status: progress?.status || 'active',
@@ -251,13 +178,6 @@ export function useMissions(): UseMissionsReturn {
           hints: Array.isArray(mission.hints) ? mission.hints : [],
           estimated_time: typeof mission.estimated_time === 'number' ? mission.estimated_time : 30,
           tags: Array.isArray(mission.tags) ? mission.tags : [],
-          environment,
-          delivery_mode: deliveryMode,
-          xp_reward: xpReward,
-          badge_reward: badgeReward,
-          lives_required: livesRequired,
-          unlock_requirement: unlockRequirement,
-          flag_hint: flagHint,
           metadata: mission.metadata || {},
           created_at: mission.created_at || new Date().toISOString(),
           updated_at: progress?.updated_at || mission.updated_at || new Date().toISOString()
@@ -509,7 +429,7 @@ export function useMissions(): UseMissionsReturn {
       try {
         // Verificar se já existe progresso para esta missão
         const { data: existingProgress } = await supabase
-          .from('mission_progress')
+          .from('mission_attempts')
           .select('id')
           .eq('user_id', user.id)
           .eq('mission_id', missionId)
@@ -518,7 +438,7 @@ export function useMissions(): UseMissionsReturn {
         if (existingProgress) {
           // Atualizar progresso existente
           await supabase
-            .from('mission_progress')
+            .from('mission_attempts')
             .update({
               status: 'completed',
               progress: mission.target_value,
@@ -529,7 +449,7 @@ export function useMissions(): UseMissionsReturn {
         } else {
           // Criar novo progresso
           await supabase
-            .from('mission_progress')
+            .from('mission_attempts')
             .insert({
               user_id: user.id,
               mission_id: missionId,
@@ -620,7 +540,7 @@ export function useMissions(): UseMissionsReturn {
       try {
         // Verificar se já existe progresso para esta missão
         const { data: existingProgress } = await supabase
-          .from('mission_progress')
+          .from('mission_attempts')
           .select('id')
           .eq('user_id', user.id)
           .eq('mission_id', missionId)
@@ -629,7 +549,7 @@ export function useMissions(): UseMissionsReturn {
         if (existingProgress) {
           // Atualizar progresso existente
           await supabase
-            .from('mission_progress')
+            .from('mission_attempts')
             .update({
               progress: clampedProgress,
               status: updatedMission.status,
@@ -640,7 +560,7 @@ export function useMissions(): UseMissionsReturn {
         } else {
           // Criar novo progresso
           await supabase
-            .from('mission_progress')
+            .from('mission_attempts')
             .insert({
               user_id: user.id,
               mission_id: missionId,
@@ -745,9 +665,108 @@ export function useMissions(): UseMissionsReturn {
     return safeMissions.filter(m => m.type === type);
   }, [safeMissions]);
 
-  const getMissionsByEnvironment = useCallback((environment: MissionEnvironment) => {
-    return safeMissions.filter(mission => mission.environment === environment);
-  }, [safeMissions]);
+  // Estados e handlers do terminal (antes do return)
+  const [terminalState, setTerminalState] = useState({
+    isOpen: false,
+    currentMission: null as Mission | null,
+    code: '',
+    output: '',
+    isRunning: false,
+    errors: [] as string[],
+    currentCheckpoint: 0,
+    chatbotActive: false
+  });
+
+  const openMissionTerminal = (missionId: string) => {
+    const mission = safeMissions.find(m => m.id === missionId) || null;
+    setTerminalState(prev => ({
+      ...prev,
+      isOpen: true,
+      currentMission: mission,
+      output: '',
+      errors: []
+    }));
+    console.log('[terminal] aberto para missão', missionId);
+  };
+
+  const closeMissionTerminal = () => {
+    setTerminalState(prev => ({ ...prev, isOpen: false }));
+    console.log('[terminal] fechado');
+  };
+
+  const updateTerminalCode = (code: string) => {
+    setTerminalState(prev => ({ ...prev, code }));
+  };
+
+  const runCodeInTerminal = async (code: string) => {
+    setTerminalState(prev => ({ ...prev, isRunning: true, code }));
+    try {
+      // Simulação de execução
+      await new Promise(res => setTimeout(res, 300));
+      const result = {
+        success: true,
+        output: 'Execução simulada concluída.',
+        validation: { message: 'Validação ok', passed: true }
+      };
+      setTerminalState(prev => ({ ...prev, isRunning: false, output: result.output }));
+      return result;
+    } catch (e) {
+      setTerminalState(prev => ({ ...prev, isRunning: false, errors: [...prev.errors, String(e)] }));
+      return { success: false, error: 'Falha na execução' };
+    }
+  };
+
+  const startChatbotSession = async (missionId: string) => {
+    const mission = safeMissions.find(m => m.id === missionId) || null;
+    setTerminalState(prev => ({ ...prev, chatbotActive: true, isOpen: true, currentMission: mission }));
+    console.log('[chatbot] sessão iniciada para missão', missionId);
+    
+    // Inicializar sessão do chatbot com contexto da missão
+    try {
+      const { chatbotService } = await import('@/services/chatbotService');
+      const context = mission ? {
+        missionId: mission.id,
+        missionTitle: mission.title,
+        difficulty: mission.difficulty,
+        category: mission.category,
+        objectives: mission.metadata?.objectives || []
+      } : {};
+      
+      chatbotService.startMissionSession(context);
+    } catch (error) {
+      console.error('[chatbot] erro ao inicializar sessão:', error);
+    }
+  };
+
+  const sendChatMessage = async (message: string) => {
+    console.log('[chatbot] usuário:', message);
+    
+    try {
+      // Importar o serviço de chatbot dinamicamente
+      const { chatbotService } = await import('@/services/chatbotService');
+      
+      const currentMission = terminalState.currentMission;
+      const context = currentMission ? {
+        missionId: currentMission.id,
+        missionTitle: currentMission.title,
+        currentStep: terminalState.currentCheckpoint,
+        totalSteps: currentMission.metadata?.steps?.length || 5,
+        userCode: terminalState.code,
+        difficulty: currentMission.difficulty,
+        category: currentMission.category,
+        objectives: currentMission.metadata?.objectives || []
+      } : {};
+      
+      const response = await chatbotService.generateResponse(message, context);
+      console.log('[chatbot] resposta IA:', response.message);
+      
+      return response.message;
+    } catch (error) {
+      console.error('[chatbot] erro:', error);
+      // Fallback para resposta simples
+      return 'Desculpe, estou com dificuldades técnicas. Tente novamente em alguns instantes.';
+    }
+  };
 
   return {
     missions: safeMissions,
@@ -762,8 +781,54 @@ export function useMissions(): UseMissionsReturn {
     generatePersonalizedMissions,
     refreshMissions,
     startMission: async (missionId: string) => {
-      // Implementar lógica de iniciar missão
-      console.log('Starting mission:', missionId);
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      setIsUpdating(true);
+      try {
+        const mission = safeMissions.find(m => m.id === missionId);
+        if (!mission) throw new Error('Missão não encontrada');
+        const nowIso = new Date().toISOString();
+
+        // Garantir registro em mission_attempts
+        try {
+          const { data: existing } = await supabase
+            .from('mission_attempts')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('mission_id', missionId)
+            .single();
+
+          if (existing?.id) {
+            await supabase
+              .from('mission_attempts')
+              .update({ 
+                status: 'in_progress', 
+                progress_data: { current_step: 0, objectives_completed: [], hints_used: 0, commands_executed: [], last_checkpoint: null, time_spent: 0 },
+                started_at: nowIso
+              })
+              .eq('id', existing.id);
+          } else {
+            await supabase
+              .from('mission_attempts')
+              .insert([{ 
+                user_id: user.id, 
+                mission_id: missionId, 
+                status: 'in_progress', 
+                progress_data: { current_step: 0, objectives_completed: [], hints_used: 0, commands_executed: [], last_checkpoint: null, time_spent: 0 },
+                started_at: nowIso
+              }]);
+          }
+        } catch (progressErr) {
+          console.error('[startMission] mission_attempts erro', progressErr);
+        }
+
+        // Atualiza cache local (status UI)
+        const updatedMissions = safeMissions.map(m =>
+          m.id === missionId ? { ...m, status: 'active', current_progress: m.current_progress || 0, updated_at: nowIso } : m
+        );
+        setCachedMissions(updatedMissions);
+      } finally {
+        setIsUpdating(false);
+      }
     },
     isUpdating,
     // Funções auxiliares
@@ -776,24 +841,15 @@ export function useMissions(): UseMissionsReturn {
     isMissionCompleted,
     isMissionStarted,
     getMissionsByType,
-    getMissionsByEnvironment,
-    // Estados do terminal (compatibilidade)
-    terminalState: {
-      isOpen: false,
-      currentMission: null,
-      code: '',
-      output: '',
-      isRunning: false,
-      errors: [],
-      currentCheckpoint: 0,
-      chatbotActive: false
-    },
-    openMissionTerminal: (missionId: string) => {
-      console.log('Opening terminal for mission:', missionId);
-    },
-    closeMissionTerminal: () => {
-      console.log('Closing mission terminal');
-    }
+
+    // Estados do terminal e handlers
+    terminalState,
+    openMissionTerminal,
+    closeMissionTerminal,
+    updateTerminalCode,
+    runCodeInTerminal,
+    startChatbotSession,
+    sendChatMessage
   };
 }
 
@@ -812,27 +868,20 @@ function generateDefaultMissions(userId: string): Mission[] {
     {
       id: `daily_${Date.now()}_1`,
       user_id: userId,
-      title: 'Rotina SOC: Check matinal',
-      description: 'Execute o checklist diário do SOC para manter a detecção ativa.',
+      title: 'Primeira Lição do Dia',
+      description: 'Complete uma lição hoje para manter seu progresso',
       type: 'daily',
-      category: 'operacoes-soc',
+      category: 'estudo',
       difficulty: 'easy',
       points: 10,
       target_value: 1,
       current_progress: 0,
       status: 'active',
       expires_at: tomorrow.toISOString(),
-      requirements: ['Acessar o painel de eventos críticos'],
-      hints: ['Revise alertas não triados e confirme status dos sensores'],
-      estimated_time: 20,
-      tags: ['soc', 'rotina'],
-      environment: MISSION_ENVIRONMENTS.INCIDENT_RESPONSE,
-      delivery_mode: MISSION_DELIVERY_MODES.TERMINAL,
-      xp_reward: 10,
-      badge_reward: 'Guardião Matinal',
-      lives_required: 0,
-      unlock_requirement: undefined,
-      flag_hint: 'Valide a integridade do agente EDR',
+      requirements: [],
+      hints: ['Escolha um curso e comece uma lição'],
+      estimated_time: 30,
+      tags: ['iniciante', 'diário'],
       metadata: {},
       created_at: now.toISOString(),
       updated_at: now.toISOString()
@@ -840,84 +889,48 @@ function generateDefaultMissions(userId: string): Mission[] {
     {
       id: `weekly_${Date.now()}_1`,
       user_id: userId,
-      title: 'Firewall Sentinel',
-      description: 'Analise tráfego malicioso e ajuste regras para conter ataques de força bruta.',
+      title: 'Explorador Semanal',
+      description: 'Complete 5 lições esta semana',
       type: 'weekly',
-      category: 'firewall',
+      category: 'progresso',
       difficulty: 'medium',
-      points: 80,
-      target_value: 3,
+      points: 50,
+      target_value: 5,
       current_progress: 0,
       status: 'active',
       expires_at: nextWeek.toISOString(),
-      requirements: ['Bloquear IPs suspeitos', 'Aplicar regra com tempo de expiração'],
-      hints: ['Priorize portas expostas e monitore tentativas em sequência'],
-      estimated_time: 45,
-      tags: ['firewall', 'config'],
-      environment: MISSION_ENVIRONMENTS.FIREWALL,
-      delivery_mode: MISSION_DELIVERY_MODES.CONFIG_PANEL,
-      xp_reward: 80,
-      badge_reward: 'Firewall Sentinel',
-      lives_required: 1,
-      unlock_requirement: 'Badge Cloud Defender',
-      flag_hint: 'Ajuste listas de bloqueio dinâmicas para encontrar o flag',
+      requirements: [],
+      hints: ['Mantenha uma rotina de estudos consistente'],
+      estimated_time: 150,
+      tags: ['semanal', 'progresso'],
       metadata: {},
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     },
     {
-      id: `incident_${Date.now()}_1`,
+      id: `coding_${Date.now()}_intro`,
       user_id: userId,
-      title: 'Resposta a Incidente: Ransomware',
-      description: 'Isolar host comprometido e restaurar serviços críticos via terminal.',
-      type: 'challenge',
-      category: 'incident-response',
-      difficulty: 'hard',
-      points: 120,
-      target_value: 4,
-      current_progress: 0,
-      status: 'active',
-      expires_at: nextWeek.toISOString(),
-      requirements: ['Identificar processo malicioso', 'Restaurar backup seguro'],
-      hints: ['Use ferramentas forenses para listar arquivos criptografados'],
-      estimated_time: 60,
-      tags: ['terminal', 'shell', 'ransomware'],
-      environment: MISSION_ENVIRONMENTS.INCIDENT_RESPONSE,
-      delivery_mode: MISSION_DELIVERY_MODES.TERMINAL,
-      xp_reward: 120,
-      badge_reward: 'Incident Wrangler',
-      lives_required: 2,
-      unlock_requirement: 'Completar 3 missões SOC',
-      flag_hint: 'Recupere o arquivo README_FOR_FLAG.txt após limpar o host',
-      metadata: {},
-      created_at: now.toISOString(),
-      updated_at: now.toISOString()
-    },
-    {
-      id: `forensics_${Date.now()}_1`,
-      user_id: userId,
-      title: 'Forense Digital: Vazamento em Nuvem',
-      description: 'Investigue logs para encontrar exfiltração e gerar relatório executivo.',
-      type: 'achievement',
-      category: 'forense',
-      difficulty: 'medium',
-      points: 90,
+      title: 'Introdução ao Terminal: Hello World',
+      description: 'Escreva um programa simples e execute no terminal embutido.',
+      type: 'coding',
+      category: 'programming',
+      difficulty: 'easy',
+      points: 20,
       target_value: 1,
       current_progress: 0,
       status: 'active',
-      expires_at: nextWeek.toISOString(),
-      requirements: ['Identificar bucket exposto', 'Documentar evidências no relatório'],
-      hints: ['Cruze logs de API Gateway com eventos IAM'],
-      estimated_time: 50,
-      tags: ['forense', 'cloud', 'relatorio'],
-      environment: MISSION_ENVIRONMENTS.FORENSICS,
-      delivery_mode: MISSION_DELIVERY_MODES.HYBRID,
-      xp_reward: 90,
-      badge_reward: 'Cloud Investigator',
-      lives_required: 1,
-      unlock_requirement: 'Score > 70% em simulado de certificação cloud',
-      flag_hint: 'Flag escondido em log de download suspeito',
-      metadata: {},
+      requirements: [],
+      hints: ['Use console.log ou print conforme linguagem do template'],
+      estimated_time: 20,
+      tags: ['coding', 'terminal', 'intro'],
+      metadata: {
+        steps: [
+          { title: 'Entender objetivo', description: 'Leia o enunciado e veja o template.' },
+          { title: 'Editar código', description: 'Altere o código para imprimir sua mensagem.' },
+          { title: 'Executar', description: 'Clique em Executar e valide a saída.' }
+        ],
+        template_code: "// Template JavaScript\nfunction main() {\n  console.log('Hello, Esquads!');\n}\nmain();"
+      },
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     }

@@ -60,24 +60,46 @@ export function useScrollReveal<T extends HTMLElement = HTMLElement>(
 
   const getAnimationClasses = () => {
     const baseClasses = 'transition-all';
-    const durationClass = `duration-[${Math.round(finalConfig.duration! * 1000)}ms]`;
-    const delayClass = finalConfig.delay && finalConfig.delay > 0 ? `delay-[${finalConfig.delay}ms]` : '';
+    // Use standard Tailwind duration classes
+    const durationClass = finalConfig.duration! <= 0.3 ? 'duration-300' : 
+                         finalConfig.duration! <= 0.5 ? 'duration-500' : 
+                         finalConfig.duration! <= 0.7 ? 'duration-700' : 'duration-1000';
+    
+    // Use standard Tailwind delay classes
+    const delayClass = finalConfig.delay && finalConfig.delay > 0 ? 
+                      finalConfig.delay <= 75 ? 'delay-75' :
+                      finalConfig.delay <= 100 ? 'delay-100' :
+                      finalConfig.delay <= 150 ? 'delay-150' :
+                      finalConfig.delay <= 200 ? 'delay-200' :
+                      finalConfig.delay <= 300 ? 'delay-300' :
+                      finalConfig.delay <= 500 ? 'delay-500' :
+                      finalConfig.delay <= 700 ? 'delay-700' : 'delay-1000' : '';
+    
     const easingClass = 'ease-out';
+
+    // Use standard Tailwind translate classes
+    const translateDistance = finalConfig.distance! <= 4 ? '1' :
+                             finalConfig.distance! <= 8 ? '2' :
+                             finalConfig.distance! <= 12 ? '3' :
+                             finalConfig.distance! <= 16 ? '4' :
+                             finalConfig.distance! <= 24 ? '6' :
+                             finalConfig.distance! <= 32 ? '8' :
+                             finalConfig.distance! <= 48 ? '12' : '16';
 
     if (!state.isVisible) {
       switch (finalConfig.direction) {
         case 'up':
-          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 translate-y-[${finalConfig.distance}px]`;
+          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 translate-y-${translateDistance}`;
         case 'down':
-          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 -translate-y-[${finalConfig.distance}px]`;
+          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 -translate-y-${translateDistance}`;
         case 'left':
-          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 translate-x-[${finalConfig.distance}px]`;
+          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 translate-x-${translateDistance}`;
         case 'right':
-          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 -translate-x-[${finalConfig.distance}px]`;
+          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 -translate-x-${translateDistance}`;
         case 'scale':
           return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 scale-95`;
         default:
-          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 translate-y-[${finalConfig.distance}px]`;
+          return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-0 translate-y-${translateDistance}`;
       }
     } else {
       return `${baseClasses} ${durationClass} ${delayClass} ${easingClass} opacity-100 translate-x-0 translate-y-0 scale-100`;

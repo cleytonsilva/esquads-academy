@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 export interface Notification {
   id: string
   user_id: string
-  type: 'achievement' | 'mission' | 'badge' | 'system' | 'reminder'
+  type: 'info' | 'success' | 'warning' | 'error'
   title: string
   message: string
   data?: any
@@ -130,7 +130,11 @@ export function useNotifications() {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true })
+        .update({ 
+          is_read: true,
+          status: 'read',
+          read_at: new Date().toISOString()
+        })
         .eq('id', notificationId)
 
       if (error) throw error
@@ -156,7 +160,11 @@ export function useNotifications() {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true })
+        .update({ 
+          is_read: true,
+          status: 'read',
+          read_at: new Date().toISOString()
+        })
         .eq('user_id', user.id)
         .eq('is_read', false)
 

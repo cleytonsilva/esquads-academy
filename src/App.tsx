@@ -2,7 +2,7 @@ import React from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Router from './components/Router';
-import { GlobalNotifications } from './components/notifications/GlobalNotifications';
+import NotificationToastContainer from './components/notifications/NotificationToastContainer';
 import { Toaster } from '@/components/ui/toaster';
 import { runVibeCheckHealth, logVibeHealthReport } from '@/services/vibeHealthCheck';
 import { useEffect } from 'react';
@@ -28,7 +28,8 @@ function App() {
           <AuthProvider>
             <NotificationProvider>
               <Router />
-              <GlobalNotifications />
+              {/* Novo sistema de notificações inteligente */}
+              <NotificationToastContainer />
               <Toaster />
             </NotificationProvider>
           </AuthProvider>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useScrollReveal, useScrollRevealStagger } from '../hooks/useScrollReveal';
 
-import logo from '../../public/images/esquads2.png'
+// Logo será carregado via caminho público
 
 export default function Footer() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -23,7 +23,7 @@ export default function Footer() {
           <div className={footerColumnsStagger.getItemClasses(0)}>
             <a href="#" className="inline-flex items-center gap-2">
               <img 
-                src={logo} 
+                src="/esquads2.png" 
                 alt="Esquads Logo" 
                 className="h-9 w-auto"
               />

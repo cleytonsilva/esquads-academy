@@ -220,21 +220,35 @@ export function useUserProfile() {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select(`
-          *,
-          user_stats (
-            total_xp,
-            level,
-            social_points,
-            courses_completed
-          )
-        `)
-        .or(`full_name.ilike.%${query}%, bio.ilike.%${query}%`)
+        .select('*')
+        .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%`)
         .eq('role', 'student')
         .limit(limit);
 
       if (error) throw error;
-      return data || [];
+      
+      // Buscar stats separadamente para cada usuário
+      const usersWithStats = await Promise.all(
+        (data || []).map(async (profile) => {
+          const { data: statsData } = await supabase
+            .from('user_stats')
+            .select('total_xp, level, social_points, courses_completed')
+            .eq('user_id', profile.user_id)
+            .maybeSingle();
+          
+          return {
+            ...profile,
+            user_stats: statsData || {
+              total_xp: 0,
+              level: 1,
+              social_points: 0,
+              courses_completed: 0
+            }
+          };
+        })
+      );
+      
+      return usersWithStats || [];
     } catch (err: any) {
       console.error('Erro ao buscar usuários:', err);
       return [];

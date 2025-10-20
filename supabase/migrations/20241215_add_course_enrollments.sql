@@ -4,7 +4,7 @@
 
 -- 1. CRIAR TABELA COURSE_ENROLLMENTS
 CREATE TABLE IF NOT EXISTS public.course_enrollments (
-  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,
   enrolled_at TIMESTAMPTZ DEFAULT now(),

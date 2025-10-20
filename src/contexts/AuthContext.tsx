@@ -60,51 +60,134 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const initializationRef = useRef(false);
   const authSubscriptionRef = useRef<any>(null);
+  const userProfileCacheRef = useRef<Map<string, string>>(new Map());
+  const fetchingProfileRef = useRef<Set<string>>(new Set());
 
-  // Função para buscar perfil do usuário
+  // Função para buscar perfil do usuário com cache
   const fetchUserProfile = async (userId: string) => {
+    if (import.meta.env.DEV) {
+      console.log('[AuthContext] fetchUserProfile start', { userId });
+    }
+
+    // Verificar cache primeiro
+    if (userProfileCacheRef.current.has(userId)) {
+      const cachedRole = userProfileCacheRef.current.get(userId) || 'student';
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] fetchUserProfile cache hit', { userId, role: cachedRole });
+      }
+      return cachedRole;
+    }
+
+    // Evitar múltiplas chamadas simultâneas para o mesmo usuário
+    if (fetchingProfileRef.current.has(userId)) {
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] fetchUserProfile already fetching', { userId });
+      }
+      return 'student'; // Retorna padrão enquanto busca
+    }
+
     try {
+      fetchingProfileRef.current.add(userId);
+      
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] fetchUserProfile querying database', { userId });
+      }
+
       const { data, error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('role')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
       if (error) {
-        console.error('Erro ao buscar perfil:', error);
-        return null;
+        console.error('[AuthContext] Erro ao buscar perfil:', error);
+        if (import.meta.env.DEV) {
+          console.log('[AuthContext] fetchUserProfile error details', { userId, error });
+        }
+        return 'student';
       }
 
-      return data?.role || 'student';
+      const role = data?.role || 'student';
+      
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] fetchUserProfile success', { userId, role, data });
+      }
+      
+      // Armazenar no cache
+      userProfileCacheRef.current.set(userId, role);
+      
+      return role;
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
-      return null;
+      console.error('[AuthContext] Erro ao buscar perfil:', error);
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] fetchUserProfile exception', { userId, error });
+      }
+      return 'student';
+    } finally {
+      fetchingProfileRef.current.delete(userId);
     }
   };
 
   // Função para processar sessão
   const processSession = async (session: Session | null) => {
+    if (import.meta.env.DEV) {
+      console.log('[AuthContext] processSession start', { session: !!session, userId: session?.user?.id });
+    }
+
     if (session?.user) {
-      setUser(session.user);
-      setSession(session);
-      setIsAuthenticated(true);
+      // Verificar se é a mesma sessão para evitar re-renders desnecessários
+      const isSameUser = user?.id === session.user.id;
+      const isSameSession = session?.access_token === session?.access_token;
       
-      // Buscar role do usuário
-      const role = await fetchUserProfile(session.user.id);
-      setUserRole(role);
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] processSession user check', { isSameUser, isSameSession, currentUserId: user?.id, sessionUserId: session.user.id });
+      }
       
-      // Configurar expiração da sessão
-      if (session.expires_at) {
-        setSessionExpiry(new Date(session.expires_at * 1000));
+      if (!isSameUser) {
+        if (import.meta.env.DEV) {
+          console.log('[AuthContext] processSession setting new user', { userId: session.user.id });
+        }
+        setUser(session.user);
+        setIsAuthenticated(true);
+        
+        // Buscar role do usuário apenas se for um usuário diferente
+        const role = await fetchUserProfile(session.user.id);
+        if (import.meta.env.DEV) {
+          console.log('[AuthContext] processSession role fetched', { userId: session.user.id, role });
+        }
+        setUserRole(role);
+      }
+      
+      // Atualizar sessão apenas se for diferente
+      if (!isSameSession) {
+        if (import.meta.env.DEV) {
+          console.log('[AuthContext] processSession setting new session', { userId: session.user.id });
+        }
+        setSession(session);
+        
+        // Configurar expiração da sessão
+        if (session.expires_at) {
+          setSessionExpiry(new Date(session.expires_at * 1000));
+        }
       }
     } else {
-      setUser(null);
-      setSession(null);
-      setIsAuthenticated(false);
-      setUserRole(null);
-      setSessionExpiry(null);
+      // Limpar estado apenas se havia um usuário antes
+      if (user || session) {
+        if (import.meta.env.DEV) {
+          console.log('[AuthContext] processSession clearing state');
+        }
+        setUser(null);
+        setSession(null);
+        setIsAuthenticated(false);
+        setUserRole(null);
+        setSessionExpiry(null);
+      }
     }
     setLoading(false);
+    
+    if (import.meta.env.DEV) {
+      console.log('[AuthContext] processSession completed');
+    }
   };
 
   // Inicialização da autenticação
@@ -130,6 +213,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('Auth state changed:', event);
             
             if (event === 'SIGNED_OUT') {
+              // Limpar cache ao fazer logout
+              userProfileCacheRef.current.clear();
+              fetchingProfileRef.current.clear();
+              
               setUser(null);
               setSession(null);
               setIsAuthenticated(false);
@@ -138,7 +225,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setMfaRequired(false);
               setMfaError(null);
               setLoading(false);
-            } else {
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              // Processar apenas eventos relevantes
               await processSession(session);
             }
           }
@@ -169,10 +257,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       setMfaError(null);
 
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] signIn start', { email });
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] signIn supabase response', { data, error });
+      }
 
       if (error) {
         setError(error.message);
@@ -181,6 +277,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data.session) {
         await processSession(data.session);
+        if (import.meta.env.DEV) {
+          console.log('[AuthContext] processSession completed for user', data.session.user?.id);
+        }
         toast.success('Login realizado com sucesso!');
       }
 
@@ -188,9 +287,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       const errorMessage = error.message || 'Erro ao fazer login';
       setError(errorMessage);
+      console.error('[AuthContext] signIn caught error:', error);
       return { error: { message: errorMessage } as AuthError };
     } finally {
       setLoading(false);
+      if (import.meta.env.DEV) {
+        console.log('[AuthContext] signIn finished');
+      }
     }
   };
 
@@ -228,17 +331,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
       
-      if (error) {
-        setError(error.message);
-        toast.error('Erro ao fazer logout');
-      } else {
-        toast.success('Logout realizado com sucesso!');
-        navigate('/login');
+      // Limpar estado local primeiro
+      setUser(null);
+      setSession(null);
+      setUserRole(null);
+      setSessionExpiry(null);
+      setIsAuthenticated(false);
+      
+      // Tentar logout no Supabase com timeout
+      const logoutPromise = supabase.auth.signOut({ scope: 'local' });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      );
+      
+      try {
+        await Promise.race([logoutPromise, timeoutPromise]);
+      } catch (logoutError) {
+        console.warn('[AuthContext] Logout error (continuing anyway):', logoutError);
+        // Continuar mesmo se o logout remoto falhar
       }
+      
+      toast.success('Logout realizado com sucesso!');
+      navigate('/login');
     } catch (error: any) {
+      console.error('[AuthContext] signOut error:', error);
       setError(error.message || 'Erro ao fazer logout');
+      // Mesmo com erro, limpar estado local e redirecionar
+      setUser(null);
+      setSession(null);
+      setUserRole(null);
+      setSessionExpiry(null);
+      setIsAuthenticated(false);
+      navigate('/login');
     } finally {
       setLoading(false);
     }

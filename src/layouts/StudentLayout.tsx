@@ -6,17 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ROUTES } from '@/utils/constants';
-import {
-  Home,
-  BookOpen,
-  Target,
-  Trophy,
-  Users,
+import { 
+  Home, 
+  BookOpen, 
+  Target, 
+  Trophy, 
+  Users, 
   User,
   Award,
-  Gamepad2,
+  Terminal,
   MessageCircle,
-  ShieldCheck
+  Route
 } from 'lucide-react';
 
 interface StudentLayoutProps {
@@ -29,10 +29,9 @@ export function StudentLayout({ children }: StudentLayoutProps) {
   const navigationItems = [
     { icon: Home, label: 'Dashboard', href: ROUTES.STUDENT_DASHBOARD },
     { icon: BookOpen, label: 'Cursos', href: ROUTES.STUDENT_COURSES },
-    { icon: Target, label: 'Trilhas', href: ROUTES.STUDENT_PATHS },
-    { icon: Gamepad2, label: 'Gamificação', href: ROUTES.STUDENT_GAMIFICATION },
+    { icon: Route, label: 'Trilhas', href: ROUTES.STUDENT_PATHS },
     { icon: Target, label: 'Missões', href: ROUTES.STUDENT_MISSIONS },
-    { icon: ShieldCheck, label: 'Certificações', href: ROUTES.STUDENT_CERTIFICATIONS },
+    { icon: Terminal, label: 'Simulados', href: ROUTES.STUDENT_SIMULATIONS },
     { icon: MessageCircle, label: 'Social', href: ROUTES.STUDENT_SOCIAL },
     { icon: Trophy, label: 'Conquistas', href: ROUTES.STUDENT_ACHIEVEMENTS },
     { icon: Users, label: 'Ranking', href: ROUTES.STUDENT_LEADERBOARD },

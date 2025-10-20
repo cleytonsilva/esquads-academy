@@ -121,7 +121,7 @@ export function useAchievements() {
 
       // Buscar estatísticas de missões
       const { data: missionStats, error: missionError } = await supabase
-        .from('mission_progress')
+        .from('mission_attempts')
         .select('mission_id, status, completed_at')
         .eq('user_id', user.id);
 
@@ -451,6 +451,41 @@ export function useAchievements() {
     return rarities.sort();
   }, [achievements]);
 
+  // Obter achievements conquistados
+  const getEarnedAchievements = useCallback(() => {
+    return achievements.filter(achievement =>
+      userBadges.some(badge => badge.achievement_id === achievement.id)
+    );
+  }, [achievements, userBadges]);
+
+  // Obter achievements disponíveis (não conquistados)
+  const getAvailableAchievements = useCallback(() => {
+    return achievements.filter(achievement =>
+      !userBadges.some(badge => badge.achievement_id === achievement.id)
+    );
+  }, [achievements, userBadges]);
+
+  // Obter estatísticas do usuário
+  const getUserAchievementStats = useCallback(() => {
+    const totalCount = achievements.length;
+    const earnedCount = userBadges.length;
+    const totalPoints = userBadges.reduce((sum, badge) => 
+      sum + (badge.achievement?.points || 0), 0
+    );
+    const completionRate = totalCount > 0 ? Math.round((earnedCount / totalCount) * 100) : 0;
+    const averageProgress = achievementProgress.length > 0
+      ? Math.round(achievementProgress.reduce((sum, p) => sum + p.progress, 0) / achievementProgress.length)
+      : 0;
+
+    return {
+      totalCount,
+      earnedCount,
+      totalPoints,
+      completionRate,
+      averageProgress
+    };
+  }, [achievements, userBadges, achievementProgress]);
+
   // ==================== RETORNO DO HOOK ====================
   
   return {
@@ -458,8 +493,8 @@ export function useAchievements() {
     achievements: getFilteredAchievements(),
     allAchievements: achievements,
     userBadges,
-    achievementProgress,
-    stats,
+    progress: achievementProgress,
+    stats: getUserAchievementStats(),
     
     // ===== ESTADOS =====
     loading,
@@ -468,12 +503,12 @@ export function useAchievements() {
     // ===== FILTROS =====
     searchTerm,
     setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
-    selectedRarity,
-    setSelectedRarity,
-    showOnlyEarned,
-    setShowOnlyEarned,
+    categoryFilter: selectedCategory,
+    setCategoryFilter: setSelectedCategory,
+    rarityFilter: selectedRarity,
+    setRarityFilter: setSelectedRarity,
+    earnedFilter: showOnlyEarned ? 'earned' : 'all',
+    setEarnedFilter: (value: string) => setShowOnlyEarned(value === 'earned'),
     
     // ===== AÇÕES =====
     loadAchievements,
@@ -481,15 +516,23 @@ export function useAchievements() {
     loadAchievementProgress,
     awardAchievement,
     checkAutoAchievements,
+    createAchievementNotification,
     
     // ===== CONSULTAS =====
     isAchievementEarned,
-    getAchievementProgress,
+    getAchievementProgress: (achievementId: string) => {
+      const progress = getAchievementProgress(achievementId);
+      return progress ? progress.progress : 0;
+    },
     getAchievementsByCategory,
     getAchievementsByRarity,
     getUpcomingAchievements,
     getAvailableCategories,
     getAvailableRarities,
+    getFilteredAchievements,
+    getEarnedAchievements,
+    getAvailableAchievements,
+    getUserAchievementStats,
     
     // ===== UTILITÁRIOS =====
     refreshData: () => {

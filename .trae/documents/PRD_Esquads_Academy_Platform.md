@@ -196,7 +196,7 @@ O Sistema de Conquistas e Certificados é um componente central da gamificação
 - Sistema de notificações para novas conquistas
 - Filtros por status (conquistado/não conquistado) e tipo
 
-**Integração com Gamificação:**
+**Integração com Sistema de Gamificação:**
 - Conexão direta com sistema de pontos da plataforma
 - Contribuição para ranking e leaderboard
 - Desbloqueio de funcionalidades especiais

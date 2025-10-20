@@ -1,67 +1,152 @@
-// Esquads Academy - Constantes da aplicaÃ§Ã£o
+// Esquads Academy - Constantes da aplicação
 
 /**
- * Rotas da aplicaÃ§Ã£o
+ * Rotas da aplicação - Estrutura Unificada Esquads
  */
 export const ROUTES = {
-  // PÃºblicas
+  // Públicas
   HOME: '/',
   LOGIN: '/login',
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
   
-  // Estudante
+  // Dashboard Unificado (ponto central de navegação)
+  DASHBOARD: '/dashboard',
   STUDENT_DASHBOARD: '/student',
-  STUDENT_COURSES: '/student/courses',
-  STUDENT_COURSE_DETAIL: '/student/courses/:id',
-  STUDENT_LESSON: '/student/courses/:courseId/lessons/:lessonId',
-  STUDENT_PROFILE: '/student/profile',
-  STUDENT_ACHIEVEMENTS: '/student/achievements',
-  STUDENT_LEADERBOARD: '/student/leaderboard',
-  STUDENT_MISSIONS: '/student/missions',
-  STUDENT_GAMIFICATION: '/student/gamification',
-  STUDENT_PATHS: '/student/paths',
-  STUDENT_PATH_DETAIL: '/student/paths/:id',
-  STUDENT_CERTIFICATIONS: '/student/certifications',
-  STUDENT_EXAM_ATTEMPT: '/student/certifications/:id',
-  STUDENT_SOCIAL: '/student/social',
   
-  // Instrutor
-  INSTRUCTOR_DASHBOARD: '/instructor',
-  INSTRUCTOR_COURSES: '/instructor/courses',
-  INSTRUCTOR_COURSE_CREATE: '/instructor/courses/create',
-  INSTRUCTOR_COURSE_EDIT: '/instructor/courses/:id/edit',
-  INSTRUCTOR_COURSE_DETAIL: '/instructor/courses/:id',
-  INSTRUCTOR_STUDENTS: '/instructor/students',
-  INSTRUCTOR_ANALYTICS: '/instructor/analytics',
-  INSTRUCTOR_PROFILE: '/instructor/profile',
+  // Hub de Missões Gamificadas
+  MISSIONS: '/missions',
+  MISSIONS_CATEGORY: '/missions/:category',
+  MISSION_DETAIL: '/missions/:category/:id',
+  MISSION_PLAY: '/missions/:category/:id/play',
   
-  // Admin
-  ADMIN_DASHBOARD: '/admin',
+  // Centro de Simulações para Certificações
+  SIMULATIONS: '/simulations',
+  SIMULATIONS_CERTIFICATION: '/simulations/:certification',
+  SIMULATION_START: '/simulations/:certification/start',
+  SIMULATION_SESSION: '/simulations/:certification/session/:sessionId',
+  SIMULATION_RESULTS: '/simulations/:certification/results/:sessionId',
+  
+  // Perfil e Progresso
+  PROFILE: '/profile',
+  PROGRESS: '/progress',
+  ACHIEVEMENTS: '/achievements',
+  LEADERBOARD: '/leaderboard',
+  
+  // Certificações
+  CERTIFICATIONS: '/certifications',
+  CERTIFICATION_DETAIL: '/certifications/:id',
+  
+  // Social (mantido para compatibilidade)
+  SOCIAL: '/social',
+  
+  // Painel Administrativo
+  ADMIN: '/admin',
+  ADMIN_DASHBOARD: '/admin/dashboard',
+  ADMIN_CONTENT: '/admin/content',
+  ADMIN_MISSIONS: '/admin/missions',
+  ADMIN_MISSIONS_CREATE: '/admin/missions/create',
+  ADMIN_MISSIONS_EDIT: '/admin/missions/:id/edit',
+  ADMIN_QUESTIONS: '/admin/questions',
+  ADMIN_QUESTIONS_CREATE: '/admin/questions/create',
+  ADMIN_QUESTIONS_EDIT: '/admin/questions/:id/edit',
+  ADMIN_SIMULATION_GENERATOR: '/admin/simulation-generator',
+  ADMIN_APPROVAL: '/admin/approval',
   ADMIN_USERS: '/admin/users',
-  ADMIN_ROLES: '/admin/roles',
   ADMIN_COURSES: '/admin/courses',
-  ADMIN_ANALYTICS: '/admin/analytics',
-  ADMIN_SETTINGS: '/admin/settings',
   ADMIN_BADGES: '/admin/badges',
   ADMIN_ACHIEVEMENTS: '/admin/achievements',
-  ADMIN_MISSIONS: '/admin/missions',
   ADMIN_PATHS: '/admin/paths',
   ADMIN_REPORTS: '/admin/reports',
+  ADMIN_ANALYTICS: '/admin/analytics',
+  ADMIN_SETTINGS: '/admin/settings',
   ADMIN_PROFILE: '/admin/profile',
-  ADMIN_CERTIFICATIONS: '/admin/certifications'
+  
+  // Painel do Estudante
+  STUDENT_COURSES: '/student/courses',
+  STUDENT_MISSIONS: '/student/missions',
+  STUDENT_SIMULATIONS: '/student/simulations',
+  STUDENT_PATHS: '/student/paths',
+  STUDENT_SOCIAL: '/student/social',
+  STUDENT_ACHIEVEMENTS: '/student/achievements',
+  STUDENT_LEADERBOARD: '/student/leaderboard',
+  STUDENT_PROFILE: '/student/profile',
+  
+  // Rotas de desenvolvimento (temporárias)
+  DEV_MISSIONS_TEST: '/dev/missions-test',
+  
+  // Rotas legadas (para migração gradual)
+  LEGACY_STUDENT: '/student',
+  LEGACY_INSTRUCTOR: '/instructor'
 } as const;
 
 /**
- * Roles de usuÃ¡rio
+ * Roles de usuário - Estrutura Unificada
  */
 export const USER_ROLES = {
   ADMIN: 'admin',
-  STUDENT: 'student'
+  STUDENT: 'student',
+  MISSION_ARCHITECT: 'mission_architect',
+  INSTRUCTOR: 'instructor' // mantido para compatibilidade
 } as const;
 
 /**
- * NÃ­veis de dificuldade
+ * Tipos de assinatura
+ */
+export const SUBSCRIPTION_TYPES = {
+  FREE: 'free',
+  PREMIUM: 'premium'
+} as const;
+
+/**
+ * Tipos de missão
+ */
+export const MISSION_TYPES = {
+  TERMINAL: 'terminal',
+  WEB_INTERFACE: 'web_interface',
+  CHAT_TEXTUAL: 'chat_textual'
+} as const;
+
+/**
+ * Status de aprovação de conteúdo
+ */
+export const CONTENT_APPROVAL_STATUS = {
+  DRAFT: 'draft',
+  PENDING_REVIEW: 'pending_review',
+  APPROVED: 'approved',
+  PUBLISHED: 'published',
+  REJECTED: 'rejected'
+} as const;
+
+/**
+ * Tipos de certificação para banco de questões
+ */
+export const CERTIFICATION_PROVIDERS = {
+  AWS: 'AWS',
+  AZURE: 'Azure',
+  COMPTIA: 'CompTIA',
+  ORACLE: 'Oracle',
+  CISCO: 'Cisco',
+  ISC2: 'ISC2',
+  ECCOUNCIL: 'EC-Council',
+  ISACA: 'ISACA'
+} as const;
+
+/**
+ * Certificações Disponíveis
+ */
+export const CERTIFICATIONS = {
+  AWS_CLOUD_PRACTITIONER: 'aws-cloud-practitioner',
+  AWS_SOLUTIONS_ARCHITECT: 'aws-solutions-architect',
+  AZURE_FUNDAMENTALS: 'azure-fundamentals',
+  AZURE_ADMINISTRATOR: 'azure-administrator',
+  COMPTIA_SECURITY_PLUS: 'comptia-security-plus',
+  COMPTIA_NETWORK_PLUS: 'comptia-network-plus'
+} as const;
+
+/**
+ * Níveis de dificuldade
  */
 export const DIFFICULTY_LEVELS = {
   BEGINNER: 'beginner',
@@ -70,82 +155,75 @@ export const DIFFICULTY_LEVELS = {
 } as const;
 
 /**
- * Status de curso
+ * Status de missão
  */
-export const COURSE_STATUS = {
-  DRAFT: 'draft',
-  PUBLISHED: 'published',
-  ARCHIVED: 'archived'
+export const MISSION_STATUS = {
+  NOT_STARTED: 'not_started',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  LOCKED: 'locked',
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected'
 } as const;
 
 /**
- * Tipos de conteÃºdo de liÃ§Ã£o
+ * Status de tentativa de missão
  */
-export const LESSON_CONTENT_TYPES = {
-  VIDEO: 'video',
-  TEXT: 'text',
-  QUIZ: 'quiz',
-  ASSIGNMENT: 'assignment',
-  INTERACTIVE: 'interactive'
+export const MISSION_ATTEMPT_STATUS = {
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  FAILED: 'failed'
 } as const;
 
 /**
- * Tipos de missÃ£o
+ * Status de sessão de simulação
  */
-export const MISSION_TYPES = {
-  COURSE_COMPLETION: 'course_completion',
-  LESSON_COMPLETION: 'lesson_completion',
-  POINTS_EARNED: 'points_earned',
+export const SIMULATION_SESSION_STATUS = {
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+  COMPLETED: 'completed'
+} as const;
+
+/**
+ * Tipos de conquista
+ */
+export const ACHIEVEMENT_TYPES = {
+  MISSION_COMPLETION: 'mission_completion',
+  SIMULATION_SCORE: 'simulation_score',
   STREAK: 'streak',
-  QUIZ_SCORE: 'quiz_score',
-  TIME_SPENT: 'time_spent',
-  TERMINAL_SCENARIO: 'terminal_scenario'
-} as const;
-
-export const MISSION_ENVIRONMENTS = {
-  FIREWALL: 'firewall',
-  INCIDENT_RESPONSE: 'incident_response',
-  FORENSICS: 'forensics'
-} as const;
-
-export const MISSION_DELIVERY_MODES = {
-  TERMINAL: 'terminal',
-  CONFIG_PANEL: 'config_panel',
-  HYBRID: 'hybrid'
+  XP_MILESTONE: 'xp_milestone',
+  CERTIFICATION_PROGRESS: 'certification_progress'
 } as const;
 
 /**
- * Categorias de badge
+ * Configurações de gamificação
  */
-export const BADGE_CATEGORIES = {
-  ACHIEVEMENT: 'achievement',
-  PROGRESS: 'progress',
-  SPECIAL: 'special',
-  MILESTONE: 'milestone'
+export const GAMIFICATION_CONFIG = {
+  INITIAL_LIVES: 5,
+  MAX_LIVES: 10,
+  LIFE_REGENERATION_TIME: 30 * 60 * 1000, // 30 minutos em ms
+  XP_PER_MISSION: 100,
+  XP_PER_SIMULATION: 50,
+  XP_BONUS_PERFECT_SCORE: 50,
+  LEVELS: {
+    NOVICE: { min: 0, max: 999 },
+    APPRENTICE: { min: 1000, max: 2499 },
+    PRACTITIONER: { min: 2500, max: 4999 },
+    EXPERT: { min: 5000, max: 9999 },
+    MASTER: { min: 10000, max: Infinity }
+  }
 } as const;
 
 /**
- * ConfiguraÃ§Ãµes de pontuaÃ§Ã£o
- */
-export const POINTS_CONFIG = {
-  LESSON_COMPLETION: 50,
-  QUIZ_COMPLETION: 100,
-  COURSE_COMPLETION: 500,
-  DAILY_LOGIN: 10,
-  STREAK_BONUS: 25,
-  PERFECT_QUIZ: 150,
-  FIRST_COURSE: 200,
-  POINTS_PER_LEVEL: 1000
-} as const;
-
-/**
- * ConfiguraÃ§Ãµes de tempo
+ * Configurações de tempo
  */
 export const TIME_CONFIG = {
   SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutos em ms
   AUTO_SAVE_INTERVAL: 30 * 1000, // 30 segundos em ms
   PROGRESS_UPDATE_INTERVAL: 10 * 1000, // 10 segundos em ms
-  NOTIFICATION_DURATION: 5000 // 5 segundos em ms
+  NOTIFICATION_DURATION: 5000, // 5 segundos em ms
+  SIMULATION_TIME_LIMIT: 90 * 60 * 1000 // 90 minutos em ms
 } as const;
 
 /**
@@ -161,7 +239,7 @@ export const FILE_LIMITS = {
 } as const;
 
 /**
- * ConfiguraÃ§Ãµes de validaÃ§Ã£o
+ * Configurações de validação
  */
 export const VALIDATION_CONFIG = {
   MIN_PASSWORD_LENGTH: 6,
@@ -171,108 +249,73 @@ export const VALIDATION_CONFIG = {
   MIN_TITLE_LENGTH: 3,
   MAX_TITLE_LENGTH: 200,
   MAX_DESCRIPTION_LENGTH: 1000,
-  MAX_COURSE_DURATION: 10080, // 7 dias em minutos
-  MAX_POINTS: 10000
+  MAX_MISSION_STEPS: 20,
+  MAX_SIMULATION_QUESTIONS: 100,
+  MIN_SIMULATION_QUESTIONS: 10
 } as const;
 
 /**
- * ConfiguraÃ§Ãµes de paginaÃ§Ã£o
+ * Configurações de paginação
  */
 export const PAGINATION_CONFIG = {
   DEFAULT_PAGE_SIZE: 20,
   MAX_PAGE_SIZE: 100,
-  COURSES_PER_PAGE: 12,
-  STUDENTS_PER_PAGE: 25,
-  LESSONS_PER_PAGE: 50
+  MISSIONS_PER_PAGE: 12,
+  QUESTIONS_PER_PAGE: 25,
+  USERS_PER_PAGE: 25
 } as const;
 
 /**
- * Cores do tema
+ * Cores do tema - Estilo 8-bit/Terminal
  */
 export const THEME_COLORS = {
-  PRIMARY: '#3B82F6',
-  SECONDARY: '#10B981',
-  SUCCESS: '#22C55E',
-  WARNING: '#F59E0B',
-  ERROR: '#EF4444',
-  INFO: '#06B6D4'
+  // Cores principais do terminal
+  PRIMARY: '#00FF00', // Verde terminal clássico
+  SECONDARY: '#00FFFF', // Ciano
+  ACCENT: '#FFFF00', // Amarelo
+  
+  // Estados
+  SUCCESS: '#00FF00',
+  WARNING: '#FFFF00',
+  ERROR: '#FF0000',
+  INFO: '#00FFFF',
+  
+  // Fundo e texto
+  BACKGROUND: '#000000',
+  SURFACE: '#1A1A1A',
+  TEXT_PRIMARY: '#00FF00',
+  TEXT_SECONDARY: '#00FFFF',
+  TEXT_MUTED: '#808080',
+  
+  // Bordas e elementos
+  BORDER: '#333333',
+  BORDER_ACTIVE: '#00FF00'
 } as const;
 
 /**
- * ConfiguraÃ§Ãµes de notificaÃ§Ã£o
+ * Configurações de notificação
  */
 export const NOTIFICATION_TYPES = {
   SUCCESS: 'success',
   ERROR: 'error',
   WARNING: 'warning',
-  INFO: 'info'
-} as const;
-
-export const CERTIFICATION_DIFFICULTY = {
-  PRACTITIONER: 'practitioner',
-  ASSOCIATE: 'associate',
-  PROFESSIONAL: 'professional',
-  EXPERT: 'expert'
-} as const;
-
-export const DEFAULT_EXAM_LENGTHS = [20, 40, 60, 80];
-
-/**
- * ConfiguraÃ§Ãµes de cache
- */
-export const CACHE_CONFIG = {
-  USER_DATA_TTL: 5 * 60 * 1000, // 5 minutos
-  COURSE_DATA_TTL: 10 * 60 * 1000, // 10 minutos
-  STATIC_DATA_TTL: 60 * 60 * 1000 // 1 hora
+  INFO: 'info',
+  XP_GAINED: 'xp_gained',
+  LIFE_LOST: 'life_lost',
+  ACHIEVEMENT_UNLOCKED: 'achievement_unlocked'
 } as const;
 
 /**
- * ConfiguraÃ§Ãµes de API
+ * Configurações de IA para geração de conteúdo
  */
-export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
-  TIMEOUT: 30000, // 30 segundos
-  RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000 // 1 segundo
-} as const;
-
-/**
- * ConfiguraÃ§Ãµes de gamificaÃ§Ã£o
- */
-export const GAMIFICATION_CONFIG = {
-  DAILY_STREAK_BONUS: 25,
-  WEEKLY_STREAK_BONUS: 100,
-  MONTHLY_STREAK_BONUS: 500,
-  PERFECT_SCORE_MULTIPLIER: 1.5,
-  SPEED_BONUS_THRESHOLD: 0.8, // 80% do tempo esperado
-  SPEED_BONUS_POINTS: 50
-} as const;
-
-/**
- * Mensagens padrÃ£o
- */
-export const MESSAGES = {
-  LOADING: 'Carregando...',
-  ERROR_GENERIC: 'Ocorreu um erro inesperado',
-  ERROR_NETWORK: 'Erro de conexÃ£o. Verifique sua internet',
-  ERROR_UNAUTHORIZED: 'VocÃª nÃ£o tem permissÃ£o para esta aÃ§Ã£o',
-  ERROR_NOT_FOUND: 'Recurso nÃ£o encontrado',
-  SUCCESS_SAVE: 'Salvo com sucesso!',
-  SUCCESS_DELETE: 'ExcluÃ­do com sucesso!',
-  SUCCESS_UPDATE: 'Atualizado com sucesso!',
-  CONFIRM_DELETE: 'Tem certeza que deseja excluir?',
-  CONFIRM_LEAVE: 'Tem certeza que deseja sair? AlteraÃ§Ãµes nÃ£o salvas serÃ£o perdidas.'
-} as const;
-
-/**
- * ConfiguraÃ§Ãµes de SEO
- */
-export const SEO_CONFIG = {
-  DEFAULT_TITLE: 'Esquads Academy - Plataforma de Ensino',
-  DEFAULT_DESCRIPTION: 'Aprenda com os melhores cursos online da Esquads Academy',
-  DEFAULT_KEYWORDS: 'cursos online, educaÃ§Ã£o, aprendizado, esquads',
-  SITE_NAME: 'Esquads Academy',
-  SITE_URL: 'https://academy.esquads.com'
+export const AI_CONFIG = {
+  MAX_TOKENS: 2000,
+  TEMPERATURE: 0.7,
+  CONTENT_TYPES: {
+    MISSION: 'mission',
+    QUESTION: 'question',
+    EXPLANATION: 'explanation'
+  }
 } as const;
 
 

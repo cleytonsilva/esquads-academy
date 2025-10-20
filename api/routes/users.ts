@@ -48,8 +48,8 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     // Verificar se o email já existe
     const { data: existingUser } = await supabaseAnon
-      .from('users')
-      .select('id')
+      .from('user_profiles')
+      .select('user_id')
       .eq('email', email)
       .maybeSingle();
 
@@ -65,11 +65,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     // Gerar um ID único para o usuário
     const userId = `dev-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Criar perfil do usuário na tabela users
+    // Criar perfil do usuário na tabela user_profiles
     const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
+      .from('user_profiles')
       .insert({
-        id: userId,
+        user_id: userId,
         email,
         full_name,
         role,
@@ -140,11 +140,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     if (phone !== undefined) updateData.phone = phone;
     if (bio !== undefined) updateData.bio = bio;
 
-    // Atualizar usuário na tabela users
+    // Atualizar usuário na tabela user_profiles
     const { data: userData, error: updateError } = await supabaseAdmin
-      .from('users')
+      .from('user_profiles')
       .update(updateData)
-      .eq('id', id)
+      .eq('user_id', id)
       .select()
       .single();
 
@@ -190,9 +190,9 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
 
     // Verificar se o usuário já existe na tabela users
     const { data: existingUser } = await supabaseAnon
-      .from('users')
+      .from('user_profiles')
       .select('*')
-      .eq('id', user_id)
+      .eq('user_id', user_id)
       .maybeSingle();
 
     if (existingUser) {
@@ -206,7 +206,7 @@ export const syncUser = async (req: Request, res: Response): Promise<void> => {
 
     // Criar registro na tabela users
     const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
+      .from('user_profiles')
       .insert({
         id: user_id,
         email,
@@ -266,9 +266,9 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
     // Excluir da tabela users primeiro
     const { error: deleteError } = await supabaseAdmin
-      .from('users')
+      .from('user_profiles')
       .delete()
-      .eq('id', id);
+      .eq('user_id', id);
 
     if (deleteError) {
       console.error('Erro ao excluir usuário da tabela:', deleteError);

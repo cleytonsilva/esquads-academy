@@ -6,7 +6,6 @@ export type NotificationType = 'like' | 'comment' | 'message' | 'group_invite' |
 export type GroupType = 'study_group' | 'course_group' | 'general';
 export type MessageStatus = 'sent' | 'delivered' | 'read';
 export type ActivityType = 'course_completed' | 'badge_earned' | 'post_created' | 'comment_added' | 'group_joined' | 'achievement_unlocked';
-export type NotificationType = 'like' | 'comment' | 'message' | 'group_invite' | 'achievement' | 'mention';
 
 export interface SocialPost {
   id: string;

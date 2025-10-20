@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 
 type Failure = {
   id: string
@@ -24,6 +24,7 @@ type Grant = {
 }
 
 export default function AdminReports() {
+  const { session } = useAuth()
   const [failures, setFailures] = useState<Failure[]>([])
   const [grants, setGrants] = useState<Grant[]>([])
   const [loading, setLoading] = useState(false)
@@ -35,8 +36,7 @@ export default function AdminReports() {
   const loadAll = async () => {
     try {
       setLoading(true); setError(null); setSuccess(null)
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
+      const token = session?.access_token
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
       const rf = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/certificates/failures`, { headers })
@@ -53,8 +53,7 @@ export default function AdminReports() {
   const retryFailure = async (id: string) => {
     try {
       setLoading(true); setError(null); setSuccess(null)
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
+      const token = session?.access_token
       const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
       const r = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/certificates/failures/${id}/retry`, { method: 'POST', headers })
       const j = await r.json()

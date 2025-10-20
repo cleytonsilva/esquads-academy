@@ -1,213 +1,181 @@
-// Esquads Academy - Tipos para Sistema de Gamificação
+// Tipos para o sistema de gamificação do Esquads
 
-/**
- * Tipos de badge
- */
-export type BadgeType = 'achievement' | 'progress' | 'special' | 'milestone';
+export enum DifficultyLevel {
+  Basic = "BASIC",
+  Intermediate = "INTERMEDIATE", 
+  Advanced = "ADVANCED",
+  Expert = "EXPERT",
+  Easy = "EASY",
+  Medium = "MEDIUM",
+  Hard = "HARD"
+}
 
-/**
- * Tipos de missão
- */
-export type MissionType = 
-  | 'course_completion'
-  | 'lesson_completion'
-  | 'points_earned'
-  | 'streak'
-  | 'quiz_score'
-  | 'quiz_completion'
-  | 'daily_login'
-  | 'time_spent'
-  | 'daily'
-  | 'weekly'
-  | 'achievement'
-  | 'challenge';
+export interface UserStats {
+  id: string;
+  user_id: string;
+  total_xp: number;
+  lives_remaining: number;
+  level: number;
+  subscription_type: 'free' | 'premium';
+  created_at: string;
+  updated_at: string;
+}
 
-/**
- * Status de missão
- */
-export type MissionStatus = 'active' | 'completed' | 'expired';
+export enum UserPlanType {
+  Free = 'free',
+  Premium = 'premium'
+}
 
-/**
- * Dificuldade de missão
- */
-export type MissionDifficulty = 'easy' | 'medium' | 'hard';
+export interface UserPlan {
+  type: UserPlanType;
+  features: {
+    maxLives: number;
+    unlimitedSimulations: boolean;
+    advancedAnalytics: boolean;
+    prioritySupport: boolean;
+    customCertifications: boolean;
+  };
+  limits: {
+    dailySimulations: number;
+    monthlySimulations: number;
+  };
+}
 
-/**
- * Interface para Badge
- */
+export interface Achievement {
+  id: string;
+  user_id: string;
+  achievement_type: string;
+  achievement_name: string;
+  description: string;
+  metadata: Record<string, any>;
+  earned_at: string;
+}
+
 export interface Badge {
   id: string;
   name: string;
   description: string;
   icon: string;
-  icon_url?: string;
-  type: BadgeType;
-  points_required?: number;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  color: string;
-  category?: string;
-  requirements?: any;
-  created_at: string;
-  updated_at: string;
+  requirements: {
+    type: string;
+    value: number;
+    description: string;
+  };
 }
 
-/**
- * Interface para Badge do Usuário
- */
-export interface UserBadge {
-  id: string;
-  user_id: string;
-  badge_id: string;
-  earned_at: string;
-  name?: string;
-  badge?: Badge;
-}
-
-/**
- * Interface para Missão
- */
-export interface Mission {
-  id: string;
-  title: string;
+export interface XPGain {
+  amount: number;
+  source: 'mission_complete' | 'simulation_complete' | 'streak_bonus' | 'daily_login';
   description: string;
-  type: MissionType;
-  difficulty: MissionDifficulty;
-  points_reward: number;
-  badge_reward_id?: string;
-  target_value: number;
-  duration_days?: number;
-  is_active?: boolean;
-  is_daily?: boolean;
-  is_weekly?: boolean;
-  is_contextual?: boolean;
-  is_ai_generated?: boolean;
-  is_completed?: boolean;
-  is_started?: boolean;
-  expires_at?: string;
-  created_at: string;
-  updated_at: string;
-  badge_reward?: Badge;
 }
 
-/**
- * Interface para Missão do Usuário
- */
-export interface UserMission {
-  id: string;
-  user_id: string;
-  mission_id: string;
-  status: MissionStatus;
-  current_progress: number;
-  current_value?: number;
-  is_completed?: boolean;
-  started_at: string;
-  completed_at?: string;
-  expires_at?: string;
-  last_updated_at?: string;
-  mission?: Mission;
+export interface LifeSystem {
+  current: number;
+  max: number;
+  regenTime: number; // em minutos
+  lastUsed: string;
 }
 
-/**
- * Interface para Pontos do Usuário
- */
-export interface UserPoints {
-  id: string;
+export interface LevelProgress {
+  currentLevel: number;
+  currentXP: number;
+  xpForNextLevel: number;
+  totalXPForNextLevel: number;
+  progress: number; // 0-100
+}
+
+export interface GameificationStats {
+  totalMissions: number;
+  completedMissions: number;
+  totalSimulations: number;
+  completedSimulations: number;
+  currentStreak: number;
+  longestStreak: number;
+  averageScore: number;
+  totalTimeSpent: number; // em minutos
+}
+
+export interface Leaderboard {
+  rank: number;
   user_id: string;
-  total_points: number;
+  name: string;
+  total_xp: number;
   level: number;
-  points_to_next_level: number;
-  streak_days: number;
-  last_activity_date: string;
-  created_at: string;
-  updated_at: string;
+  achievements_count: number;
 }
 
-/**
- * Interface para Histórico de Pontos
- */
-export interface PointsHistory {
+// Constantes do sistema de gamificação
+export const GAMIFICATION_CONSTANTS = {
+  // Sistema de XP
+  XP_PER_LEVEL: 1000,
+  MISSION_BASE_XP: 100,
+  SIMULATION_BASE_XP: 50,
+  STREAK_MULTIPLIER: 1.5,
+  DAILY_LOGIN_XP: 25,
+  
+  // Sistema de vidas
+  MAX_LIVES_FREE: 5,
+  MAX_LIVES_PREMIUM: 10,
+  LIFE_REGEN_TIME: 30, // minutos
+  
+  // Badges e conquistas
+  ACHIEVEMENT_TYPES: {
+    FIRST_MISSION: 'first_mission',
+    MISSION_STREAK: 'mission_streak',
+    SIMULATION_MASTER: 'simulation_master',
+    XP_MILESTONE: 'xp_milestone',
+    PERFECT_SCORE: 'perfect_score',
+    SPEED_DEMON: 'speed_demon',
+    CERTIFICATION_EXPERT: 'certification_expert'
+  },
+  
+  // Níveis de dificuldade
+  DIFFICULTY_MULTIPLIERS: {
+    beginner: 1.0,
+    intermediate: 1.5,
+    advanced: 2.0
+  }
+} as const;
+
+export type AchievementType = keyof typeof GAMIFICATION_CONSTANTS.ACHIEVEMENT_TYPES;
+
+// Enum para categorias de missões
+export enum MissionCategory {
+  Firewall = "FIREWALL",
+  CloudSecurity = "CLOUD_SECURITY",
+  Forensics = "FORENSICS",
+  NetworkSecurity = "NETWORK_SECURITY",
+  PenetrationTesting = "PENETRATION_TESTING",
+  IncidentResponse = "INCIDENT_RESPONSE",
+  VulnerabilityAssessment = "VULNERABILITY_ASSESSMENT"
+}
+
+// Comandos por categoria
+export const COMMANDS_BY_CATEGORY = {
+  FIREWALL: ['iptables', 'ufw', 'netstat', 'ss', 'nmap'],
+  CLOUD_SECURITY: ['aws', 'kubectl', 'docker', 'terraform'],
+  FORENSICS: ['volatility', 'autopsy', 'strings', 'hexdump'],
+  NETWORK_SECURITY: ['wireshark', 'nmap', 'netcat', 'curl'],
+  PENETRATION_TESTING: ['nmap', 'metasploit', 'burpsuite', 'sqlmap'],
+  INCIDENT_RESPONSE: ['volatility', 'wireshark', 'tcpdump', 'grep'],
+  VULNERABILITY_ASSESSMENT: ['nessus', 'openvas', 'nikto', 'dirb']
+} as const;
+
+// Interface para linha de output do terminal
+export interface TerminalOutputLine {
   id: string;
-  user_id: string;
-  points_earned: number;
-  reason: string;
-  source_type: 'lesson' | 'quiz' | 'course' | 'mission' | 'streak' | 'bonus' | 'badge';
-  source_id?: string;
-  created_at: string;
+  type: 'command' | 'output' | 'success' | 'error' | 'warning' | 'info' | 'system' | 'prompt';
+  content: string;
+  timestamp: Date;
 }
 
-/**
- * Interface para Ranking
- */
-export interface LeaderboardEntry {
-  user_id: string;
-  username: string;
-  full_name: string;
-  avatar_url?: string;
-  total_points: number;
-  level: number;
-  badges_count: number;
-  position: number;
-}
-
-/**
- * Interface para Estatísticas de Gamificação
- */
-export interface GamificationStats {
-  total_points: number;
-  current_level: number;
-  points_to_next_level: number;
-  badges_earned: number;
-  missions_completed: number;
-  current_streak: number;
-  longest_streak: number;
-  rank_position: number;
-  total_users: number;
-}
-
-/**
- * Interface para Configuração de Níveis
- */
-export interface LevelConfig {
-  level: number;
-  points_required: number;
-  title: string;
-  benefits: string[];
-  badge_id?: string;
-}
-
-/**
- * Interface para Recompensa
- */
-export interface Reward {
-  type: 'points' | 'badge' | 'level_up';
-  value: number;
-  badge?: Badge;
-  level?: number;
-  message: string;
-}
-
-/**
- * Interface para Progresso de Missão
- */
-export interface MissionProgress {
-  mission_id: string;
-  current_value: number;
-  target_value: number;
-  percentage: number;
-  is_completed: boolean;
-}
-
-/**
- * Interface para Atividade de Gamificação
- */
-export interface GamificationActivity {
-  id: string;
-  user_id: string;
-  type: 'badge_earned' | 'mission_completed' | 'level_up' | 'streak_milestone';
-  title: string;
-  description: string;
-  points_earned?: number;
-  badge_id?: string;
-  level?: number;
-  created_at: string;
+// Interface para estado do terminal
+export interface TerminalState {
+  commandHistory: any[];
+  output: TerminalOutputLine[];
+  isExecuting: boolean;
+  prompt: string;
+  environmentVariables: Record<string, string>;
+  theme: any;
 }

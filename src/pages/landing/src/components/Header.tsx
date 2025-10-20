@@ -1,8 +1,26 @@
-import { Menu } from 'lucide-react';
-
-import logo from '../../public/images/esquads2.png'
+import { Menu, User, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRoleVerification } from '@/hooks/useRoleVerification';
 
 export default function Header() {
+  const { user, signOut } = useAuth();
+  const { role, getCorrectPanel } = useRoleVerification();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
+
+  const getDashboardLink = () => {
+    if (role === 'admin') {
+      return '/admin/dashboard';
+    }
+    return '/student';
+  };
   return (
     <>
       {/* Top Accent - positioned absolutely to not affect header positioning */}
@@ -14,7 +32,7 @@ export default function Header() {
             {/* Logo */}
             <a href="/" className="inline-flex items-center gap-3 group">
               <img
-                src={logo}
+                src="/esquads2.png"
                 alt="Esquads Logo"
                 className="h-12 w-auto object-contain flex-shrink-0 transition-opacity duration-200"
                 loading="eager"
@@ -34,16 +52,39 @@ export default function Header() {
 
             {/* Actions */}
             <div className="hidden lg:flex items-center gap-3">
-              <a href="/login" className="text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 rounded-md transition-all hover:-translate-y-0.5 hover:shadow-sm">Entrar</a>
-              <a href="/register" className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
-                  <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
-                  <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
-                  <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
-                </svg>
-                Criar conta
-              </a>
+              {user ? (
+                // Usuário logado
+                <>
+                  <a 
+                    href={getDashboardLink()} 
+                    className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 rounded-md transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                  >
+                    <User className="w-4 h-4" />
+                    Dashboard
+                  </a>
+                  <button 
+                    onClick={handleSignOut}
+                    className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sair
+                  </button>
+                </>
+              ) : (
+                // Usuário não logado
+                <>
+                  <a href="/login" className="text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 rounded-md transition-all hover:-translate-y-0.5 hover:shadow-sm">Entrar</a>
+                  <a href="/register" className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                    </svg>
+                    Criar conta
+                  </a>
+                </>
+              )}
             </div>
 
             {/* Mobile */}
@@ -59,16 +100,39 @@ export default function Header() {
                   <a href="#certificacoes" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Certificações</a>
                   <a href="#empresas" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Empresas</a>
                   <div className="my-2 border-t border-slate-200"></div>
-                  <a href="/login" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Entrar</a>
-                  <a href="/register" className="mt-1 inline-flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-all hover:-translate-y-0.5 hover:shadow">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
-                      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
-                      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
-                      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
-                    </svg>
-                    Criar conta
-                  </a>
+                  {user ? (
+                    // Usuário logado - Mobile
+                    <>
+                      <a 
+                        href={getDashboardLink()} 
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <User className="w-4 h-4" />
+                        Dashboard
+                      </a>
+                      <button 
+                        onClick={handleSignOut}
+                        className="mt-1 inline-flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-all hover:-translate-y-0.5 hover:shadow w-full"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sair
+                      </button>
+                    </>
+                  ) : (
+                    // Usuário não logado - Mobile
+                    <>
+                      <a href="/login" className="px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Entrar</a>
+                      <a href="/register" className="mt-1 inline-flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-all hover:-translate-y-0.5 hover:shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                        </svg>
+                        Criar conta
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
             </details>

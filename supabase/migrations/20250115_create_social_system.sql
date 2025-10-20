@@ -18,7 +18,7 @@ CREATE TYPE notification_type AS ENUM ('like', 'comment', 'message', 'group_invi
 
 -- Tabela de posts/discussões
 CREATE TABLE social_posts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE social_posts (
 
 -- Tabela de comentários
 CREATE TABLE social_comments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     parent_comment_id UUID REFERENCES social_comments(id) ON DELETE CASCADE,
@@ -47,7 +47,7 @@ CREATE TABLE social_comments (
 
 -- Tabela de curtidas em posts
 CREATE TABLE social_post_likes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -56,7 +56,7 @@ CREATE TABLE social_post_likes (
 
 -- Tabela de curtidas em comentários
 CREATE TABLE social_comment_likes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id UUID NOT NULL REFERENCES social_comments(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -65,7 +65,7 @@ CREATE TABLE social_comment_likes (
 
 -- Tabela de grupos de estudo
 CREATE TABLE study_groups (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
     course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
@@ -80,7 +80,7 @@ CREATE TABLE study_groups (
 
 -- Tabela de membros dos grupos
 CREATE TABLE study_group_members (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID NOT NULL REFERENCES study_groups(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role TEXT DEFAULT 'member', -- 'admin', 'moderator', 'member'
@@ -90,7 +90,7 @@ CREATE TABLE study_group_members (
 
 -- Tabela de mensagens dos grupos
 CREATE TABLE group_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID NOT NULL REFERENCES study_groups(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
@@ -101,7 +101,7 @@ CREATE TABLE group_messages (
 
 -- Tabela de mensagens privadas
 CREATE TABLE private_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
@@ -112,7 +112,7 @@ CREATE TABLE private_messages (
 
 -- Tabela de conversas privadas
 CREATE TABLE private_conversations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user1_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     user2_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     last_message_id UUID REFERENCES private_messages(id),
@@ -124,7 +124,7 @@ CREATE TABLE private_conversations (
 
 -- Tabela de atividades do feed
 CREATE TABLE social_activities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     activity_type activity_type NOT NULL,
     title TEXT NOT NULL,
@@ -136,7 +136,7 @@ CREATE TABLE social_activities (
 
 -- Tabela de notificações sociais
 CREATE TABLE social_notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
     notification_type notification_type NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE social_notifications (
 
 -- Tabela de seguir usuários
 CREATE TABLE user_follows (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     follower_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     following_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -159,7 +159,7 @@ CREATE TABLE user_follows (
 
 -- Tabela de competições/desafios
 CREATE TABLE social_challenges (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
     course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
@@ -175,7 +175,7 @@ CREATE TABLE social_challenges (
 
 -- Tabela de participantes dos desafios
 CREATE TABLE challenge_participants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     challenge_id UUID NOT NULL REFERENCES social_challenges(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     score INTEGER DEFAULT 0,
@@ -186,7 +186,7 @@ CREATE TABLE challenge_participants (
 
 -- Tabela de leaderboard social
 CREATE TABLE social_leaderboard (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     period TEXT NOT NULL, -- 'weekly', 'monthly', 'all_time'
     social_points INTEGER DEFAULT 0,

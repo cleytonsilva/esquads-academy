@@ -22,11 +22,17 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    debug: import.meta.env.DEV
   },
   global: {
     headers: {
       'X-Client-Info': 'esquads-academy'
+    }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
     }
   }
 })

@@ -17,13 +17,8 @@ export function useStudyGroups() {
         .from('study_groups')
         .select(`
           *,
-          creator:users!study_groups_created_by_fkey(id, full_name, avatar_url),
-          member_count:group_members(count),
-          recent_members:group_members(
-            user:users(id, full_name, avatar_url)
-          )
+          creator:users!study_groups_created_by_fkey(id, full_name, avatar_url)
         `)
-        .eq('group_members.status', 'active')
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -39,7 +34,7 @@ export function useStudyGroups() {
             .eq('group_id', group.id)
             .eq('user_id', user?.id)
             .eq('status', 'active')
-            .single();
+            .maybeSingle();
 
           // Buscar contagem real de membros
           const { count: memberCount } = await supabase
@@ -52,7 +47,7 @@ export function useStudyGroups() {
           const { data: recentMembers } = await supabase
             .from('group_members')
             .select(`
-              user:users(id, full_name, avatar_url)
+              user:users!group_members_user_id_fkey(id, full_name, avatar_url)
             `)
             .eq('group_id', group.id)
             .eq('status', 'active')
@@ -64,7 +59,7 @@ export function useStudyGroups() {
             member_count: memberCount || 0,
             is_member: !!memberData,
             is_admin: memberData?.role === 'admin',
-            recent_members: recentMembers?.map(m => m.user) || []
+            recent_members: recentMembers?.map(m => m.user).filter(Boolean) || []
           };
         })
       );
@@ -77,6 +72,9 @@ export function useStudyGroups() {
     } catch (error) {
       console.error('Erro ao buscar grupos:', error);
       setError('Erro ao carregar grupos');
+      // Falha silenciosa - não quebra a UI
+      setGroups([]);
+      setMyGroups([]);
     }
   };
 

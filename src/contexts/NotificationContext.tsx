@@ -37,12 +37,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // Verificar se já existe notificação de boas-vindas
     const checkAndCreateWelcome = () => {
       const hasWelcomeNotification = notificationHook.notifications.some(
-        n => n.type === 'system' && n.data?.welcome === true
+        n => n.type === 'info' && n.data?.welcome === true
       )
 
       if (!hasWelcomeNotification) {
         notificationHook.createNotification(
-          'system',
+          'info',
           'Bem-vindo ao Esquads!',
           'Explore missões, conquiste achievements e desenvolva suas habilidades.',
           { welcome: true }
@@ -91,7 +91,7 @@ export function useNotificationHelpers() {
 
   const notifyAchievementUnlocked = async (achievementName: string, points: number) => {
     return await createNotification(
-      'achievement',
+      'success',
       'Conquista Desbloqueada! 🏆',
       `Você desbloqueou "${achievementName}" e ganhou ${points} pontos!`,
       { achievementName, points, type: 'unlock' }
@@ -100,7 +100,7 @@ export function useNotificationHelpers() {
 
   const notifyMissionCompleted = async (missionTitle: string, points: number) => {
     return await createNotification(
-      'mission',
+      'success',
       'Missão Concluída! 🎯',
       `Parabéns! Você completou "${missionTitle}" e ganhou ${points} pontos!`,
       { missionTitle, points, type: 'completion' }
@@ -109,7 +109,7 @@ export function useNotificationHelpers() {
 
   const notifyBadgeEarned = async (badgeName: string) => {
     return await createNotification(
-      'badge',
+      'success',
       'Novo Badge Conquistado! 🏅',
       `Você ganhou o badge "${badgeName}"!`,
       { badgeName, type: 'earned' }
@@ -118,7 +118,7 @@ export function useNotificationHelpers() {
 
   const notifyLevelUp = async (newLevel: number, rewards?: any) => {
     return await createNotification(
-      'system',
+      'info',
       'Level Up! 🚀',
       `Parabéns! Você alcançou o nível ${newLevel}!`,
       { newLevel, rewards, type: 'level_up' }
@@ -127,7 +127,7 @@ export function useNotificationHelpers() {
 
   const notifyStreakMilestone = async (streakDays: number) => {
     return await createNotification(
-      'achievement',
+      'success',
       'Sequência Incrível! 🔥',
       `Você manteve uma sequência de ${streakDays} dias estudando!`,
       { streakDays, type: 'streak' }
@@ -136,7 +136,7 @@ export function useNotificationHelpers() {
 
   const notifyDailyReminder = async () => {
     return await createNotification(
-      'reminder',
+      'warning',
       'Hora de Estudar! 📚',
       'Não se esqueça de completar suas missões diárias!',
       { type: 'daily_reminder' },
@@ -147,7 +147,7 @@ export function useNotificationHelpers() {
 
   const notifySystemMaintenance = async (startTime: string, duration: string) => {
     return await createNotification(
-      'system',
+      'info',
       'Manutenção Programada 🔧',
       `O sistema entrará em manutenção às ${startTime} por aproximadamente ${duration}.`,
       { startTime, duration, type: 'maintenance' }

@@ -7,7 +7,7 @@
 
 -- Tabela para métricas do dashboard administrativo
 CREATE TABLE IF NOT EXISTS admin_dashboard_metrics (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     metric_name TEXT NOT NULL,
     metric_value NUMERIC NOT NULL,
     metric_type TEXT NOT NULL, -- 'count', 'percentage', 'currency', 'time'
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS admin_dashboard_metrics (
 
 -- Tabela para KPIs executivos
 CREATE TABLE IF NOT EXISTS admin_kpis (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     kpi_name TEXT NOT NULL,
     current_value NUMERIC NOT NULL,
     target_value NUMERIC,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS admin_kpis (
 
 -- Tabela para alertas do sistema
 CREATE TABLE IF NOT EXISTS system_alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     message TEXT NOT NULL,
     alert_type TEXT NOT NULL CHECK (alert_type IN ('info', 'warning', 'error', 'success')),
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS system_alerts (
 
 -- Tabela para atividades recentes do sistema
 CREATE TABLE IF NOT EXISTS system_activities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
     activity_type TEXT NOT NULL,
     activity_description TEXT NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS system_activities (
 
 -- Tabela para departamentos
 CREATE TABLE IF NOT EXISTS departments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     description TEXT,
     parent_department_id UUID REFERENCES departments(id),
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS departments (
 
 -- Tabela para funções/papéis customizados
 CREATE TABLE IF NOT EXISTS roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     description TEXT,
     permissions JSONB DEFAULT '[]'::jsonb,
@@ -114,7 +114,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_permissions JSONB DEFAULT '[]'
 
 -- Tabela para logs de atividades dos usuários
 CREATE TABLE IF NOT EXISTS user_activity_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     action TEXT NOT NULL,
     description TEXT,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS user_activity_logs (
 
 -- Tabela para grupos de usuários
 CREATE TABLE IF NOT EXISTS user_groups (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
     permissions JSONB DEFAULT '[]'::jsonb,
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS user_groups (
 
 -- Tabela de relacionamento usuários-grupos
 CREATE TABLE IF NOT EXISTS user_group_members (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     group_id UUID NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE,
     added_by UUID REFERENCES users(id),
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS user_group_members (
 
 -- Tabela para templates de notificação
 CREATE TABLE IF NOT EXISTS notification_templates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     subject TEXT NOT NULL,
     body TEXT NOT NULL,
@@ -421,23 +421,23 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Inserir roles básicos
 INSERT INTO roles (id, name, description, permissions, is_system_role, is_custom) VALUES
-    (uuid_generate_v4(), 'Administrador', 'Acesso total ao sistema', 
+    (gen_random_uuid(), 'Administrador', 'Acesso total ao sistema', 
      '["users.create", "users.read", "users.update", "users.delete", "courses.create", "courses.read", "courses.update", "courses.delete", "dashboard.view", "reports.view", "system.manage"]'::jsonb, 
      true, false),
-    (uuid_generate_v4(), 'Instrutor', 'Criar e gerenciar cursos', 
+    (gen_random_uuid(), 'Instrutor', 'Criar e gerenciar cursos', 
      '["courses.create", "courses.read", "courses.update", "dashboard.view"]'::jsonb, 
      true, false),
-    (uuid_generate_v4(), 'Estudante', 'Acesso aos cursos', 
+    (gen_random_uuid(), 'Estudante', 'Acesso aos cursos', 
      '["courses.read"]'::jsonb, 
      true, false)
 ON CONFLICT (name) DO NOTHING;
 
 -- Inserir departamentos básicos
 INSERT INTO departments (id, name, description) VALUES
-    (uuid_generate_v4(), 'TI', 'Tecnologia da Informação'),
-    (uuid_generate_v4(), 'Educação', 'Departamento de Educação e Treinamento'),
-    (uuid_generate_v4(), 'Marketing', 'Marketing e Comunicação'),
-    (uuid_generate_v4(), 'Vendas', 'Vendas e Relacionamento com Cliente')
+    (gen_random_uuid(), 'TI', 'Tecnologia da Informação'),
+    (gen_random_uuid(), 'Educação', 'Departamento de Educação e Treinamento'),
+    (gen_random_uuid(), 'Marketing', 'Marketing e Comunicação'),
+    (gen_random_uuid(), 'Vendas', 'Vendas e Relacionamento com Cliente')
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================

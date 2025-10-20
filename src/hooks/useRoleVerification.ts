@@ -261,7 +261,7 @@ export function useRoleVerification(): UseRoleVerificationReturn {
       lastVerifiedUserIdRef.current = null;
       verificationInProgressRef.current = false;
     }
-  }, [user?.id, verifyRole]);
+  }, [user?.id]); // Remover verifyRole das dependências para evitar loops
 
   // CORREÇÃO 15: Remover redirecionamento automático que pode causar loops
   // O redirecionamento será feito apenas quando explicitamente chamado

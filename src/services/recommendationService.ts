@@ -45,7 +45,7 @@ export interface CourseRecommendation {
   course_id: string;
   title: string;
   description: string;
-  instructor_name: string;
+  created_by: string;
   category: string;
   difficulty_level: string;
   duration_hours: number;
@@ -148,13 +148,13 @@ export class RecommendationService {
     }
   }
 
-  // Tentar buscar perfil na tabela users (fallback)
+  // Tentar buscar perfil na tabela user_profiles (fallback)
   private static async tryGetUserProfileFromUsersTable(userId: string): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
       
       if (error) {
@@ -277,16 +277,16 @@ export class RecommendationService {
   // Tentar atualizar na tabela users (fallback)
   private static async tryUpdateUsersTable(userId: string, profile: Partial<UserProfile>): Promise<boolean> {
     try {
-      // Remover campos específicos de user_profiles que não existem em users
+      // Remover campos específicos de user_profiles que não existem em user_profiles
       const { ...userFields } = profile;
       
       const { error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .update({
           ...userFields,
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId);
+        .eq('user_id', userId);
       
       if (error) throw error;
       return true;
@@ -318,15 +318,10 @@ export class RecommendationService {
           id,
           title,
           description,
-          instructor_name,
-          category,
-          difficulty_level,
+          created_by,
+          difficulty,
           duration_hours,
-          rating,
-          student_count,
-          price,
-          thumbnail_url,
-          skills
+          cover_image_url
         `)
         .eq('is_published', true);
 
@@ -370,15 +365,15 @@ export class RecommendationService {
           course_id: course.id,
           title: course.title,
           description: course.description,
-          instructor_name: course.instructor_name,
-          category: course.category,
-          difficulty_level: course.difficulty_level,
+          created_by: course.created_by,
+          category: 'General', // Default category
+          difficulty_level: course.difficulty,
           duration_hours: course.duration_hours,
-          rating: course.rating,
-          student_count: course.student_count,
-          price: course.price,
-          thumbnail_url: course.thumbnail_url,
-          skills: course.skills || [],
+          rating: 4.5, // Default rating
+          student_count: 0, // Default count
+          price: 0, // Free by default
+          thumbnail_url: course.cover_image_url,
+          skills: [], // Default skills
           recommendation_score: score,
           recommendation_reasons: reasons,
           match_percentage: matchPercentage,
@@ -556,18 +551,13 @@ export class RecommendationService {
               id,
               title,
               description,
-              instructor_name,
-              category,
-              difficulty_level,
+              created_by,
+              difficulty,
               duration_hours,
-              rating,
-              student_count,
-              price,
-              thumbnail_url,
-              skills
+              cover_image_url
             `)
             .eq('is_published', true)
-            .order('student_count', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(limit);
 
           if (error) throw error;
@@ -576,15 +566,15 @@ export class RecommendationService {
             course_id: course.id,
             title: course.title,
             description: course.description,
-            instructor_name: course.instructor_name,
-            category: course.category,
-            difficulty_level: course.difficulty_level,
+            created_by: course.created_by,
+            category: 'General', // Default category
+            difficulty_level: course.difficulty,
             duration_hours: course.duration_hours,
-            rating: course.rating,
-            student_count: course.student_count,
-            price: course.price,
-            thumbnail_url: course.thumbnail_url,
-            skills: course.skills || [],
+            rating: 4.5, // Default rating
+            student_count: 0, // Default count
+            price: 0, // Free by default
+            thumbnail_url: course.cover_image_url,
+            skills: [], // Default skills
             recommendation_score: 0.5,
             recommendation_reasons: ['Curso popular'],
             match_percentage: 50,
@@ -731,15 +721,15 @@ export class RecommendationService {
             course_id: course.id,
             title: course.title,
             description: course.description,
-            instructor_name: course.instructor_name,
-            category: course.category,
-            difficulty_level: course.difficulty_level,
+            instructor_name: course.created_by,
+            category: 'General',
+            difficulty_level: course.difficulty,
             duration_hours: course.duration_hours,
-            rating: course.rating,
-            student_count: course.student_count,
-            price: course.price,
-            thumbnail_url: course.thumbnail_url,
-            skills: course.skills || [],
+            rating: 4.5,
+            student_count: 0,
+            price: 0,
+            thumbnail_url: course.cover_image_url,
+            skills: [],
             recommendation_score: similarity,
             recommendation_reasons: ['Curso similar'],
             match_percentage: Math.round(similarity * 100),

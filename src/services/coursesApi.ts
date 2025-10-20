@@ -1,15 +1,47 @@
+import { supabase } from '@/integrations/supabase/client'
+
 export async function fetchCourses(status?: string) {
-  const url = new URL(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/courses`)
-  if (status) url.searchParams.set('status', status)
-  const r = await fetch(url.toString())
-  if (!r.ok) throw new Error('Failed to load courses')
-  const j = await r.json()
-  return j.courses || []
+  try {
+    let query = supabase
+      .from('courses')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (status === 'published') {
+      query = query.eq('is_published', true)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching courses:', error)
+      throw new Error('Failed to load courses')
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error in fetchCourses:', error)
+    throw new Error('Failed to load courses')
+  }
 }
 
 export async function fetchCourseDetail(id: string) {
-  const r = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/courses/${id}`)
-  if (!r.ok) throw new Error('Failed to load course')
-  return await r.json()
+  try {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching course detail:', error)
+      throw new Error('Failed to load course')
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in fetchCourseDetail:', error)
+    throw new Error('Failed to load course')
+  }
 }
 

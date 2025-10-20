@@ -22,7 +22,7 @@ const ProgressCard: React.FC<ProgressCardProps> = ({
   progressColor,
   className = ''
 }) => (
-  <div className={`rounded-xl border border-slate-200 p-4 bg-slate-50/70 hover:bg-slate-50 transition-all hover:-translate-y-0.5 hover:shadow transition-all duration-[600ms] ease-out opacity-100 translate-x-0 translate-y-0 scale-100 ${className}`}>
+  <div className={`rounded-xl border border-slate-200 p-4 bg-slate-50/70 hover:bg-slate-50 transition-all hover:-translate-y-0.5 hover:shadow transition-all duration-700 ease-out opacity-100 translate-x-0 translate-y-0 scale-100 ${className}`}>
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-md bg-white border border-slate-200 flex items-center justify-center">

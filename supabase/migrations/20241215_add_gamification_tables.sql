@@ -3,7 +3,7 @@
 
 -- Tabela para histórico de pontos
 CREATE TABLE IF NOT EXISTS points_history (
-  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   points INTEGER NOT NULL,
   reason TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS points_history (
 
 -- Tabela para configurações de níveis
 CREATE TABLE IF NOT EXISTS level_configs (
-  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   level INTEGER NOT NULL UNIQUE,
   points_required INTEGER NOT NULL,
   title TEXT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS level_configs (
 
 -- Tabela para atividades de gamificação (feed de atividades)
 CREATE TABLE IF NOT EXISTS gamification_activities (
-  id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   activity_type TEXT NOT NULL CHECK (activity_type IN ('badge_earned', 'level_up', 'mission_completed', 'course_completed', 'streak_milestone')),
   title TEXT NOT NULL,

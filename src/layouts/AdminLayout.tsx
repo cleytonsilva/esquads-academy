@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ROUTES } from '@/utils/constants';
-import {
-  BarChart3,
-  Users,
-  BookOpen,
-  Settings,
+import { 
+  BarChart3, 
+  Users, 
+  BookOpen, 
+  Settings, 
   Award,
   Trophy,
   FileText,
@@ -19,7 +19,11 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle,
-  ShieldCheck
+  Terminal,
+  ClipboardList,
+  Brain,
+  HelpCircle,
+  Route
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -33,11 +37,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: BarChart3, label: 'Dashboard', href: ROUTES.ADMIN_DASHBOARD },
     { icon: Users, label: 'Usuários', href: ROUTES.ADMIN_USERS },
     { icon: BookOpen, label: 'Cursos', href: ROUTES.ADMIN_COURSES },
-    { icon: BarChart3, label: 'Analytics', href: ROUTES.ADMIN_ANALYTICS },
+    { icon: Route, label: 'Trilhas', href: ROUTES.ADMIN_PATHS },
+    { icon: Target, label: 'Missões', href: ROUTES.ADMIN_MISSIONS },
+    { icon: HelpCircle, label: 'Banco de Questões', href: ROUTES.ADMIN_QUESTIONS },
+    { icon: Brain, label: 'Gerador de Simulados', href: ROUTES.ADMIN_SIMULATION_GENERATOR },
+    { icon: ClipboardList, label: 'Exames', href: ROUTES.ADMIN_EXAMS },
+    { icon: Terminal, label: 'Simulados', href: ROUTES.ADMIN_SIMULATORS },
     { icon: Award, label: 'Badges', href: ROUTES.ADMIN_BADGES },
     { icon: Trophy, label: 'Conquistas', href: ROUTES.ADMIN_ACHIEVEMENTS },
-    { icon: Target, label: 'Missões', href: ROUTES.ADMIN_MISSIONS },
-    { icon: ShieldCheck, label: 'Certificações', href: ROUTES.ADMIN_CERTIFICATIONS },
+    { icon: BarChart3, label: 'Analytics', href: ROUTES.ADMIN_ANALYTICS },
     { icon: FileText, label: 'Relatórios', href: ROUTES.ADMIN_REPORTS },
     { icon: Settings, label: 'Configurações', href: ROUTES.ADMIN_SETTINGS },
   ];

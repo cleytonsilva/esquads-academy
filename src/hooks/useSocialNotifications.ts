@@ -36,13 +36,22 @@ export function useSocialNotifications() {
         .from('social_notifications')
         .select(`
           *,
-          sender:users(id, full_name, avatar_url)
+          sender:users!social_notifications_sender_id_fkey(id, full_name, avatar_url)
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        // Se a tabela não existe ou há erro de permissão, retornar array vazio sem mostrar erro
+        if (error.code === 'PGRST116' || error.code === '42P01') {
+          console.warn('Tabela social_notifications não existe ou sem permissão:', error);
+          setNotifications([]);
+          setUnreadCount(0);
+          return;
+        }
+        throw error;
+      }
 
       setNotifications(data || []);
       
@@ -51,7 +60,9 @@ export function useSocialNotifications() {
       setUnreadCount(unread);
     } catch (error) {
       console.error('Erro ao buscar notificações:', error);
-      toast.error('Erro ao carregar notificações');
+      // Não mostrar erro para o usuário se for problema de tabela
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }

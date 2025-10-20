@@ -1,0 +1,16 @@
+{
+  "name": "Esquads - Gamificação em Cibersegurança",
+  "short_name": "Esquads",
+  "description": "Sistema de gamificação para treinamento em cibersegurança",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml"
+    }
+  ]
+}

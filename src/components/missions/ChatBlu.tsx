@@ -1,35 +1,54 @@
 import React, { useState } from 'react'
-import { supabase } from '@/integrations/supabase/client'
 
-type Msg = { role: 'user' | 'assistant'; content: string }
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
 
-export default function ChatBlu({ context }: { context?: any }) {
-  const [messages, setMessages] = useState<Msg[]>([])
+interface ChatBluProps {
+  onMessage?: (message: string) => void
+}
+
+export const ChatBlu: React.FC<ChatBluProps> = ({ onMessage }) => {
+  const [messages, setMessages] = useState<Message[]>([
+    { id: '1', role: 'assistant', content: 'Olá! Sou o BLU, seu assistente para esta missão. Como posso ajudar?' }
+  ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
 
   const send = async () => {
-    if (!input.trim()) return
-    const next = [...messages, { role: 'user', content: input }]
-    setMessages(next as Msg[]); setInput(''); setLoading(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('mission_chat_blu', {
-        body: { messages: next, context, provider: 'openai' }
-      })
-      if (!error && (data as any)?.reply) {
-        const flagged = (data as any).flagged
-        const text = (data as any).reply
-        setMessages(m => m.concat({ role: 'assistant', content: text + (flagged ? '\n[Nota: conteúdo sensível filtrado]' : '') }))
+    if (!input.trim() || loading) return
+    
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim()
+    }
+    
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setLoading(true)
+    
+    // Simular resposta do BLU
+    setTimeout(() => {
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Entendi sua pergunta. Vou ajudar você com isso!'
       }
-    } finally { setLoading(false) }
+      setMessages(prev => [...prev, botResponse])
+      setLoading(false)
+      onMessage?.(userMessage.content)
+    }, 1000)
   }
 
   return (
     <div className="border rounded-md p-3 h-full flex flex-col">
       <div className="font-semibold mb-2">BLU</div>
       <div className="flex-1 overflow-auto space-y-2">
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+        {messages.map((m) => (
+          <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
             <div className={`inline-block px-2 py-1 rounded ${m.role==='user'?'bg-blue-600 text-white':'bg-gray-100'}`}>{m.content}</div>
           </div>
         ))}

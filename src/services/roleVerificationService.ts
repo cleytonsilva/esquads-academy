@@ -223,9 +223,9 @@ class RoleVerificationService {
 
       const queryPromise = supabaseWithRetry(() => 
         supabase
-          .from('users')
+          .from('user_profiles')
           .select('role')
-          .eq('id', userId)
+          .eq('user_id', userId)
           .single()
       );
 

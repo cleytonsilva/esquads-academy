@@ -27,32 +27,54 @@ export function useSocialFeed() {
       // Processar os dados para incluir contadores e status de like
       const processedPosts = await Promise.all(
         (data || []).map(async (post) => {
-          // Buscar contagem de likes
-          const { count: likesCount } = await supabase
-            .from('social_post_likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+          try {
+            // Buscar contagem de likes com tratamento de erro
+            const { count: likesCount, error: likesError } = await supabase
+              .from('social_post_likes')
+              .select('*', { count: 'exact', head: true })
+              .eq('post_id', post.id);
 
-          // Buscar contagem de comentários
-          const { count: commentsCount } = await supabase
-            .from('social_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+            if (likesError) {
+              console.warn('Erro ao buscar likes:', likesError);
+            }
 
-          // Verificar se o usuário curtiu
-          const { data: likeData } = await supabase
-            .from('social_post_likes')
-            .select('id')
-            .eq('post_id', post.id)
-            .eq('user_id', user?.id)
-            .single();
+            // Buscar contagem de comentários com tratamento de erro
+            const { count: commentsCount, error: commentsError } = await supabase
+              .from('social_comments')
+              .select('*', { count: 'exact', head: true })
+              .eq('post_id', post.id);
 
-          return {
-            ...post,
-            likes_count: likesCount || 0,
-            comments_count: commentsCount || 0,
-            is_liked: !!likeData
-          };
+            if (commentsError) {
+              console.warn('Erro ao buscar comentários:', commentsError);
+            }
+
+            // Verificar se o usuário curtiu com tratamento de erro
+            const { data: likeData, error: likeError } = await supabase
+              .from('social_post_likes')
+              .select('id')
+              .eq('post_id', post.id)
+              .eq('user_id', user?.id)
+              .single();
+
+            if (likeError && likeError.code !== 'PGRST116') {
+              console.warn('Erro ao verificar like:', likeError);
+            }
+
+            return {
+              ...post,
+              likes_count: likesCount || 0,
+              comments_count: commentsCount || 0,
+              is_liked: !!likeData
+            };
+          } catch (postError) {
+            console.warn('Erro ao processar post:', postError);
+            return {
+              ...post,
+              likes_count: 0,
+              comments_count: 0,
+              is_liked: false
+            };
+          }
         })
       );
 

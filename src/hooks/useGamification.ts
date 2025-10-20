@@ -1,388 +1,220 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { 
-  UserPoints, 
-  Badge, 
-  UserBadge, 
-  Mission, 
-  UserMission, 
-  LeaderboardEntry, 
-  GamificationStats,
-  LevelConfig,
-  PointsHistory,
-  GamificationActivity
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  UserStats, 
+  Achievement, 
+  XPGain, 
+  LevelProgress, 
+  LifeSystem,
+  GAMIFICATION_CONSTANTS 
 } from '@/types/gamification';
+import { GamificationService } from '@/services/gamificationService';
+import { toast } from 'sonner';
 
-export function useGamification(userId?: string) {
-  const [userPoints, setUserPoints] = useState<UserPoints | null>(null);
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [userMissions, setUserMissions] = useState<UserMission[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [stats, setStats] = useState<GamificationStats | null>(null);
-  const [levelConfigs, setLevelConfigs] = useState<LevelConfig[]>([]);
-  const [pointsHistory, setPointsHistory] = useState<PointsHistory[]>([]);
-  const [activities, setActivities] = useState<GamificationActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useGamification() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Carregar configurações de níveis
-  const loadLevelConfigs = async () => {
-    try {
+  // Buscar estatísticas do usuário
+  const { data: userStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['userStats', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
       const { data, error } = await supabase
-        .from('level_configs')
-        .select('*')
-        .order('level', { ascending: true });
-
-      if (error) throw error;
-      setLevelConfigs(data || []);
-    } catch (err) {
-      console.error('Erro ao carregar configurações de níveis:', err);
-    }
-  };
-
-  // Carregar dados do usuário
-  const loadUserData = async (currentUserId: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Carregar pontos do usuário
-      let { data: userPointsData, error: pointsError } = await supabase
-        .from('user_points')
-        .select('*')
-        .eq('user_id', currentUserId)
+        .from('user_stats')
+        .select('user_id, total_xp, level, streak_days, total_study_time, courses_completed, missions_completed, simulations_completed, achievements_count, badges_earned')
+        .eq('user_id', user.id)
         .single();
-
-      if (pointsError && pointsError.code === 'PGRST116') {
-        // Usuário não tem pontos ainda, criar registro inicial
-        const { data: newUserPoints, error: createError } = await supabase
-          .from('user_points')
-          .insert({
-            user_id: currentUserId,
-            total_points: 0,
-            level: 1,
-            experience_points: 0,
-            current_streak: 0,
-            longest_streak: 0,
-            last_activity_date: new Date().toISOString().split('T')[0]
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        userPointsData = newUserPoints;
-      } else if (pointsError) {
-        throw pointsError;
-      }
-
-      setUserPoints(userPointsData);
-
-      // Carregar badges do usuário
-      const { data: userBadgesData, error: badgesError } = await supabase
-        .from('user_badges')
-        .select(`
-          *,
-          badge:badges(*)
-        `)
-        .eq('user_id', currentUserId);
-
-      if (badgesError) throw badgesError;
-      setUserBadges(userBadgesData || []);
-
-      // Carregar todos os badges disponíveis
-      const { data: allBadgesData, error: allBadgesError } = await supabase
-        .from('badges')
-        .select('*');
-
-      if (allBadgesError) throw allBadgesError;
-      setBadges(allBadgesData || []);
-
-      // Carregar progresso das missões do usuário
-      const { data: userMissionsData, error: missionsError } = await supabase
-        .from('mission_progress')
-        .select(`
-          *,
-          mission:missions(*)
-        `)
-        .eq('user_id', currentUserId);
-
-      if (missionsError) throw missionsError;
-      setUserMissions(userMissionsData || []);
-
-      // Carregar todas as missões disponíveis
-      const { data: allMissionsData, error: allMissionsError } = await supabase
-        .from('missions')
-        .select('*')
-        .eq('is_active', true);
-
-      if (allMissionsError) throw allMissionsError;
-      setMissions(allMissionsData || []);
-
-      // Carregar histórico de pontos
-      const { data: historyData, error: historyError } = await supabase
-        .from('points_history')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (historyError) throw historyError;
-      setPointsHistory(historyData || []);
-
-      // Carregar atividades de gamificação
-      const { data: activitiesData, error: activitiesError } = await supabase
-        .from('gamification_activities')
-        .select('*')
-        .eq('user_id', currentUserId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (activitiesError) throw activitiesError;
-      setActivities(activitiesData || []);
-
-      // Calcular estatísticas
-      const totalBadges = userBadgesData?.length || 0;
-      const completedMissions = userMissionsData?.filter(m => m.status === 'completed').length || 0;
-      const totalMissions = userMissionsData?.length || 0;
       
-      setStats({
-        total_points: userPointsData?.total_points || 0,
-        current_level: userPointsData?.level || 1,
-        points_to_next_level: userPointsData?.points_to_next_level || 0,
-        badges_earned: totalBadges,
-        missions_completed: completedMissions,
-        current_streak: userPointsData?.current_streak || 0,
-        longest_streak: userPointsData?.longest_streak || 0,
-        rank_position: 0,
-        total_users: 0
-      });
+      if (error) throw error;
+      return data as UserStats;
+    },
+    enabled: !!user?.id
+  });
 
-    } catch (err) {
-      console.error('Erro ao carregar dados do usuário:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
-  // Carregar leaderboard
-  const loadLeaderboard = async () => {
-    try {
+  // Buscar conquistas do usuário
+  const { data: achievements, isLoading: achievementsLoading } = useQuery({
+    queryKey: ['achievements', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
       const { data, error } = await supabase
-        .from('user_points')
-        .select(`
-          user_id,
-          total_points,
-          level,
-          current_streak,
-          user:users(full_name, avatar_url)
-        `)
-        .order('total_points', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-
-      const leaderboardData: LeaderboardEntry[] = data?.map((entry, index) => ({
-        user_id: entry.user_id,
-        username: entry.user?.full_name || 'Usuário',
-        full_name: entry.user?.full_name || 'Usuário',
-        avatar_url: entry.user?.avatar_url || '',
-        total_points: entry.total_points,
-        level: entry.level,
-        badges_count: 0, // Será calculado separadamente se necessário
-        position: index + 1
-      })) || [];
-
-      setLeaderboard(leaderboardData);
-    } catch (err) {
-      console.error('Erro ao carregar leaderboard:', err);
-    }
-  };
-
-  // Adicionar pontos
-  const addPoints = async (points: number, reason: string, sourceType: string, sourceId?: string) => {
-    if (!userId) return;
-
-    try {
-      // Adicionar ao histórico
-      const { error: historyError } = await supabase
-        .from('points_history')
-        .insert({
-          user_id: userId,
-          points,
-          reason,
-          source_type: sourceType,
-          source_id: sourceId
-        });
-
-      if (historyError) throw historyError;
-
-      // Atualizar pontos do usuário
-      const currentPoints = userPoints?.total_points || 0;
-      const newTotalPoints = currentPoints + points;
-      
-      // Calcular novo nível baseado nos pontos
-      let newLevel = userPoints?.level || 1;
-      const currentLevelConfig = levelConfigs.find(config => config.level === newLevel);
-      const nextLevelConfig = levelConfigs.find(config => config.level === newLevel + 1);
-      
-      if (nextLevelConfig && newTotalPoints >= nextLevelConfig.points_required) {
-        newLevel = nextLevelConfig.level;
-        
-        // Criar atividade de level up
-        await supabase
-          .from('gamification_activities')
-          .insert({
-            user_id: userId,
-            type: 'level_up',
-            title: `Nível ${newLevel} alcançado!`,
-            description: `Parabéns! Você alcançou o nível ${newLevel}`,
-            points_earned: 0,
-            metadata: { level: newLevel, previous_level: userPoints?.level || 1 }
-          });
-      }
-
-      const { error: updateError } = await supabase
-        .from('user_points')
-        .update({
-          total_points: newTotalPoints,
-          level: newLevel,
-          experience_points: newTotalPoints,
-          last_activity_date: new Date().toISOString().split('T')[0],
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-
-      if (updateError) throw updateError;
-
-      // Recarregar dados
-      await loadUserData(userId);
-      
-    } catch (err) {
-      console.error('Erro ao adicionar pontos:', err);
-      throw err;
-    }
-  };
-
-  // Completar missão
-  const completeMission = async (missionId: string) => {
-    if (!userId) return;
-
-    try {
-      // Buscar dados da missão
-      const { data: mission, error: missionError } = await supabase
-        .from('missions')
+        .from('user_achievements')
         .select('*')
-        .eq('id', missionId)
-        .single();
-
-      if (missionError) throw missionError;
-
-      // Atualizar progresso da missão
-      const { error: progressError } = await supabase
-        .from('mission_progress')
-        .upsert({
-          user_id: userId,
-          mission_id: missionId,
-          status: 'completed',
-          progress: mission.target_value,
-          completed_at: new Date().toISOString()
-        });
-
-      if (progressError) throw progressError;
-
-      // Adicionar pontos da missão
-      await addPoints(
-        mission.points_reward,
-        `Missão completada: ${mission.title}`,
-        'mission',
-        missionId
-      );
-
-      // Criar atividade de missão completada
-      await supabase
-        .from('gamification_activities')
-        .insert({
-          user_id: userId,
-          type: 'mission_completed',
-          title: 'Missão completada!',
-          description: `Você completou a missão: ${mission.title}`,
-          points_earned: mission.points_reward,
-          metadata: { mission_id: missionId, mission_title: mission.title }
-        });
-
-      // Se a missão tem badge como recompensa, conceder o badge
-      if (mission.badge_reward) {
-        await supabase
-          .from('user_badges')
-          .insert({
-            user_id: userId,
-            badge_id: mission.badge_reward,
-            earned_at: new Date().toISOString()
-          });
-
-        // Criar atividade de badge conquistado
-        const { data: badge } = await supabase
-          .from('badges')
-          .select('name')
-          .eq('id', mission.badge_reward)
-          .single();
-
-        if (badge) {
-          await supabase
-            .from('gamification_activities')
-            .insert({
-              user_id: userId,
-              type: 'badge_earned',
-              title: 'Badge conquistado!',
-              description: `Você conquistou o badge: ${badge.name}`,
-              points_earned: 0,
-              metadata: { badge_id: mission.badge_reward, badge_name: badge.name }
-            });
-        }
-      }
-
-      // Recarregar dados
-      await loadUserData(userId);
+        .eq('user_id', user.id)
+        .order('earned_at', { ascending: false });
       
-    } catch (err) {
-      console.error('Erro ao completar missão:', err);
-      throw err;
-    }
+      if (error) throw error;
+      return data as Achievement[];
+    },
+    enabled: !!user?.id
+  });
+
+  // Calcular nível e progresso
+  const calculateLevel = (totalXP: number): LevelProgress => {
+    const level = Math.floor(totalXP / GAMIFICATION_CONSTANTS.XP_PER_LEVEL) + 1;
+    const xpInCurrentLevel = totalXP % GAMIFICATION_CONSTANTS.XP_PER_LEVEL;
+    const xpForNextLevel = GAMIFICATION_CONSTANTS.XP_PER_LEVEL - xpInCurrentLevel;
+    const progress = (xpInCurrentLevel / GAMIFICATION_CONSTANTS.XP_PER_LEVEL) * 100;
+
+    return {
+      currentLevel: level,
+      currentXP: xpInCurrentLevel,
+      xpForNextLevel,
+      totalXPForNextLevel: GAMIFICATION_CONSTANTS.XP_PER_LEVEL,
+      progress
+    };
   };
 
-  // Efeitos
-  useEffect(() => {
-    loadLevelConfigs();
-    loadLeaderboard();
-  }, []);
+  // Calcular sistema de vidas
+  const calculateLifeSystem = (stats: UserStats): LifeSystem => {
+    const maxLives = stats.subscription_type === 'premium' 
+      ? GAMIFICATION_CONSTANTS.MAX_LIVES_PREMIUM 
+      : GAMIFICATION_CONSTANTS.MAX_LIVES_FREE;
 
-  useEffect(() => {
-    if (userId) {
-      loadUserData(userId);
+    return {
+      current: stats.lives_remaining,
+      max: maxLives,
+      regenTime: GAMIFICATION_CONSTANTS.LIFE_REGEN_TIME,
+      lastUsed: stats.updated_at
+    };
+  };
+
+  // Mutation para ganhar XP usando o serviço
+  const gainXPMutation = useMutation({
+    mutationFn: async (xpGain: XPGain) => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      
+      return await GamificationService.processXPGain(user.id, xpGain);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['userStats', user?.id] });
+      
+      if (data.levelUp) {
+        queryClient.invalidateQueries({ queryKey: ['achievements', user?.id] });
+        toast.success(`🎉 Parabéns! Você subiu para o nível ${data.newLevel}!`);
+      }
+      
+      if (data.newAchievements.length > 0) {
+        data.newAchievements.forEach(achievement => {
+          toast.success(`🏆 Nova conquista: ${achievement.achievement_name}!`);
+        });
+      }
+      
+      toast.success(`+${data.newTotalXP - (userStats?.total_xp || 0)} XP ganho!`);
+    },
+    onError: (error) => {
+      toast.error(`Erro ao ganhar XP: ${error.message}`);
     }
-  }, [userId]);
+  });
+
+  // Mutation para usar uma vida usando o serviço
+  const useLifeMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      
+      return await GamificationService.useLife(user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userStats', user?.id] });
+      toast.info('💔 Uma vida foi usada');
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    }
+  });
+
+  // Mutation para regenerar vidas usando o serviço
+  const regenLifeMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      
+      return await GamificationService.regenerateLife(user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userStats', user?.id] });
+      toast.success('💚 Uma vida foi regenerada!');
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    }
+  });
+
+  // Mutation para adicionar conquista usando o serviço
+  const addAchievementMutation = useMutation({
+    mutationFn: async (achievement: Omit<Achievement, 'id' | 'user_id' | 'earned_at'>) => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+
+      return await GamificationService.grantAchievement(user.id, achievement);
+    },
+    onSuccess: (achievement) => {
+      queryClient.invalidateQueries({ queryKey: ['achievements', user?.id] });
+      if (achievement) {
+        toast.success(`🏆 Nova conquista: ${achievement.achievement_name}!`);
+      }
+    },
+    onError: (error) => {
+      toast.error(`Erro ao adicionar conquista: ${error.message}`);
+    }
+  });
+
+  // Mutation para atualizar progresso
+  const updateProgressMutation = useMutation({
+    mutationFn: async ({ 
+      certificationId, 
+      progressData 
+    }: { 
+      certificationId: string; 
+      progressData: {
+        topicScores?: Record<string, number>;
+        missionsCompleted?: number;
+        simulationsTaken?: number;
+        masteryLevel?: number;
+      }
+    }) => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+
+      return await GamificationService.updateUserProgress(user.id, certificationId, progressData);
+    },
+    onSuccess: () => {
+      // Invalidar queries relacionadas ao progresso
+      queryClient.invalidateQueries({ queryKey: ['userProgress', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['userStats', user?.id] });
+    },
+    onError: (error) => {
+      toast.error(`Erro ao atualizar progresso: ${error.message}`);
+    }
+  });
+
+  const levelProgress = userStats ? calculateLevel(userStats.total_xp) : null;
+  const lifeSystem = userStats ? calculateLifeSystem(userStats) : null;
 
   return {
-    userPoints,
-    badges,
-    userBadges,
-    missions,
-    userMissions,
-    leaderboard,
-    stats,
-    levelConfigs,
-    pointsHistory,
-    activities,
-    loading,
-    error,
-    addPoints,
-    completeMission,
-    refreshData: () => userId && loadUserData(userId),
-    refreshLeaderboard: loadLeaderboard
+    // Data
+    userStats,
+    achievements,
+    levelProgress,
+    lifeSystem,
+    
+    // Loading states
+    isLoading: statsLoading || achievementsLoading,
+    
+    // Actions
+    gainXP: gainXPMutation.mutate,
+    useLife: useLifeMutation.mutate,
+    regenLife: regenLifeMutation.mutate,
+    addAchievement: addAchievementMutation.mutate,
+    updateProgress: updateProgressMutation.mutate,
+    
+    // Utilities
+    calculateLevel,
+    calculateLifeSystem,
+    
+    // Service methods
+    calculateXP: GamificationService.calculateXP,
+    checkAchievements: (userId: string) => GamificationService.checkAndGrantAchievements(userId)
   };
 }

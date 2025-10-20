@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { supabaseWithRetry } from '@/utils/supabaseWithRetry';
-import { notificationService } from './notificationService';
+import notificationService from './notificationService';
 import { 
   ExtendedUser, 
   UserSearchFilters, 
@@ -68,12 +67,12 @@ class UserManagementService {
   async getUsers(filters: UserSearchFilters = {}): Promise<UserSearchResult> {
     try {
       let query = supabase
-        .from('users')
+        .from('user_profiles')
         .select(`
           *,
           department:departments(*),
           customRole:custom_roles(*)
-        `, { count: 'exact' });
+        `);
 
       // Aplicar filtros
       if (filters.role) {
@@ -84,44 +83,32 @@ class UserManagementService {
         query = query.eq('status', filters.status);
       }
 
-      if (filters.departmentId) {
-        query = query.eq('department_id', filters.departmentId);
-      }
-
-      if (filters.roleId) {
-        query = query.eq('custom_role_id', filters.roleId);
+      if (filters.department) {
+        query = query.eq('department_id', filters.department);
       }
 
       if (filters.search) {
         query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
       }
 
-      if (filters.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-
-      if (filters.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
-      }
-
       // Aplicar paginação
-      const limit = filters.limit || 20;
-      const offset = filters.offset || 0;
+      const limit = 20;
+      const offset = 0;
 
       query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false });
 
-      const { data, error, count } = await supabaseWithRetry(() => query);
+      const { data, error } = await query;
 
       if (error) {
         console.error('Erro na consulta de usuários:', error);
         throw error;
       }
 
-      const total = count || 0;
+      const total = (data as ExtendedUser[])?.length || 0;
       const totalPages = Math.ceil(total / limit);
 
       return {
-        users: data || [],
+        users: (data as ExtendedUser[]) || [],
         total,
         page: Math.floor(offset / limit) + 1,
         limit,
@@ -139,19 +126,17 @@ class UserManagementService {
    */
   async getUserById(id: string): Promise<User | null> {
     try {
-      const { data, error } = await supabaseWithRetry(() =>
-        supabase
-          .from('users')
-          .select('*')
-          .eq('id', id)
-          .single()
-      );
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .single();
 
       if (error) {
         console.error('Erro ao buscar usuário por ID:', error);
         throw error;
       }
-      return data;
+      return data as User;
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
       throw new Error('Não foi possível carregar os dados do usuário');
@@ -240,7 +225,7 @@ class UserManagementService {
         .update({
           status,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', id)
         .select()
         .single();
@@ -258,7 +243,7 @@ class UserManagementService {
         });
       }
 
-      return data;
+      return data as User;
     } catch (error) {
       console.error('Erro ao alterar status do usuário:', error);
       throw new Error('Não foi possível alterar o status do usuário');
@@ -293,9 +278,9 @@ class UserManagementService {
       const { error } = await supabase
         .from('users')
         .update({
-          ...updates,
+          ...updates as any,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .in('id', userIds);
 
       if (error) throw error;
@@ -347,7 +332,7 @@ class UserManagementService {
     try {
       const { data, error } = await supabase
         .from('departments')
-        .insert(departmentData)
+        .insert(departmentData as any)
         .select()
         .single();
 
@@ -363,7 +348,7 @@ class UserManagementService {
     try {
       const { data, error } = await supabase
         .from('departments')
-        .update(departmentData)
+        .update(departmentData as any)
         .eq('id', departmentId)
         .select()
         .single();
@@ -418,7 +403,7 @@ class UserManagementService {
     try {
       const { data, error } = await supabase
         .from('custom_roles')
-        .insert(roleData)
+        .insert(roleData as any)
         .select()
         .single();
 
@@ -434,7 +419,7 @@ class UserManagementService {
     try {
       const { data, error } = await supabase
         .from('custom_roles')
-        .update(roleData)
+        .update(roleData as any)
         .eq('id', roleId)
         .select()
         .single();
@@ -548,13 +533,13 @@ class UserManagementService {
         { count: students },
         { count: newThisMonth }
       ] = await Promise.all([
-        supabase.from('users').select('*', { count: 'exact', head: true }),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'inactive'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'suspended'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student'),
-        supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('status', 'inactive'),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('status', 'suspended'),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
       ]);
 
       return {

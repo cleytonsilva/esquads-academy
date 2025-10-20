@@ -1,17 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import type { 
-  AdminDashboardMetric, 
-  SystemAlert, 
-  SystemActivity, 
-  ExtendedUser 
-} from '@/types/database';
 
 export interface RealtimeData {
-  metrics: AdminDashboardMetric[];
-  alerts: SystemAlert[];
-  activities: SystemActivity[];
-  users: ExtendedUser[];
+  metrics: {
+    totalUsers: number;
+    totalCourses: number;
+    totalMissions: number;
+    totalSimulations: number;
+    activeUsers: number;
+    completedCourses: number;
+    completedMissions: number;
+    completedSimulations: number;
+  };
+  alerts: any[];
+  activities: any[];
+  users: any[];
   onlineUsers: string[];
 }
 
@@ -26,10 +29,19 @@ export interface UseRealtimeUpdatesReturn extends RealtimeData {
 export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
-  const [metrics, setMetrics] = useState<AdminDashboardMetric[]>([]);
-  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
-  const [activities, setActivities] = useState<SystemActivity[]>([]);
-  const [users, setUsers] = useState<ExtendedUser[]>([]);
+  const [metrics, setMetrics] = useState({
+    totalUsers: 0,
+    totalCourses: 0,
+    totalMissions: 0,
+    totalSimulations: 0,
+    activeUsers: 0,
+    completedCourses: 0,
+    completedMissions: 0,
+    completedSimulations: 0,
+  });
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
   // Função para carregar dados iniciais
@@ -37,22 +49,43 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
     try {
       setConnectionStatus('connecting');
 
-      // Carregar métricas
-      const { data: metricsData } = await supabase
-        .from('admin_dashboard_metrics')
-        .select('*')
-        .order('recorded_at', { ascending: false })
-        .limit(100);
+      // Carregar métricas básicas
+      const [
+        { count: totalUsers },
+        { count: totalCourses },
+        { count: totalMissions },
+        { count: totalSimulations },
+        { count: activeUsers },
+        { count: completedCourses },
+        { count: completedMissions },
+        { count: completedSimulations }
+      ] = await Promise.all([
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('courses').select('*', { count: 'exact', head: true }),
+        supabase.from('missions').select('*', { count: 'exact', head: true }),
+        supabase.from('generated_simulations').select('*', { count: 'exact', head: true }),
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }).gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from('user_courses').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        supabase.from('mission_attempts').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        supabase.from('simulation_attempts').select('*', { count: 'exact', head: true }).eq('status', 'completed')
+      ]);
 
-      if (metricsData) {
-        setMetrics(metricsData);
-      }
+      setMetrics({
+        totalUsers: totalUsers || 0,
+        totalCourses: totalCourses || 0,
+        totalMissions: totalMissions || 0,
+        totalSimulations: totalSimulations || 0,
+        activeUsers: activeUsers || 0,
+        completedCourses: completedCourses || 0,
+        completedMissions: completedMissions || 0,
+        completedSimulations: completedSimulations || 0,
+      });
 
-      // Carregar alertas não resolvidos
+      // Carregar alertas (usando notificações como proxy)
       const { data: alertsData } = await supabase
-        .from('system_alerts')
+        .from('notifications')
         .select('*')
-        .eq('is_resolved', false)
+        .eq('is_read', false)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -60,11 +93,11 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
         setAlerts(alertsData);
       }
 
-      // Carregar atividades recentes
+      // Carregar atividades recentes (usando mission_attempts como proxy)
       const { data: activitiesData } = await supabase
-        .from('system_activities')
+        .from('mission_attempts')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('started_at', { ascending: false })
         .limit(100);
 
       if (activitiesData) {
@@ -73,17 +106,12 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
 
       // Carregar usuários
       const { data: usersData } = await supabase
-        .from('users')
-        .select(`
-          *,
-          department:departments(*),
-          user_role:roles(*)
-        `)
-        .eq('is_active', true)
+        .from('user_profiles')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (usersData) {
-        setUsers(usersData as ExtendedUser[]);
+        setUsers(usersData);
       }
 
       setConnectionStatus('connected');
@@ -101,16 +129,9 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
   // Função para marcar alerta como lido
   const markAlertAsRead = useCallback(async (alertId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { error } = await supabase
-        .from('system_alerts')
-        .update({
-          is_acknowledged: true,
-          acknowledged_by: user.id,
-          acknowledged_at: new Date().toISOString()
-        })
+        .from('notifications')
+        .update({ is_read: true })
         .eq('id', alertId);
 
       if (error) {
@@ -124,16 +145,9 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
   // Função para dispensar alerta
   const dismissAlert = useCallback(async (alertId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { error } = await supabase
-        .from('system_alerts')
-        .update({
-          is_resolved: true,
-          resolved_by: user.id,
-          resolved_at: new Date().toISOString()
-        })
+        .from('notifications')
+        .update({ is_read: true })
         .eq('id', alertId);
 
       if (error) {
@@ -148,42 +162,20 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
     // Carregar dados iniciais
     loadInitialData();
 
-    // Configurar canais de realtime do Supabase
-    const metricsChannel = supabase
-      .channel('admin_dashboard_metrics_realtime')
+    // Configurar canais de realtime do Supabase usando tabelas existentes
+    const notificationsChannel = supabase
+      .channel('notifications_realtime')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'admin_dashboard_metrics' },
+        { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
-          console.log('Métrica atualizada em tempo real:', payload);
+          console.log('Notificação atualizada em tempo real:', payload);
           
           if (payload.eventType === 'INSERT') {
-            setMetrics(prev => [payload.new as AdminDashboardMetric, ...prev.slice(0, 99)]);
-          } else if (payload.eventType === 'UPDATE') {
-            setMetrics(prev => 
-              prev.map(metric => 
-                metric.id === payload.new.id ? payload.new as AdminDashboardMetric : metric
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setMetrics(prev => prev.filter(metric => metric.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    const alertsChannel = supabase
-      .channel('system_alerts_realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'system_alerts' },
-        (payload) => {
-          console.log('Alerta atualizado em tempo real:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            setAlerts(prev => [payload.new as SystemAlert, ...prev.slice(0, 49)]);
+            setAlerts(prev => [payload.new, ...prev.slice(0, 49)]);
           } else if (payload.eventType === 'UPDATE') {
             setAlerts(prev => 
               prev.map(alert => 
-                alert.id === payload.new.id ? payload.new as SystemAlert : alert
+                alert.id === payload.new.id ? payload.new : alert
               )
             );
           } else if (payload.eventType === 'DELETE') {
@@ -193,30 +185,30 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
       )
       .subscribe();
 
-    const activitiesChannel = supabase
-      .channel('system_activities_realtime')
+    const missionAttemptsChannel = supabase
+      .channel('mission_attempts_realtime')
       .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'system_activities' },
+        { event: 'INSERT', schema: 'public', table: 'mission_attempts' },
         (payload) => {
-          console.log('Nova atividade em tempo real:', payload);
-          setActivities(prev => [payload.new as SystemActivity, ...prev.slice(0, 99)]);
+          console.log('Nova tentativa de missão em tempo real:', payload);
+          setActivities(prev => [payload.new, ...prev.slice(0, 99)]);
         }
       )
       .subscribe();
 
-    const usersChannel = supabase
-      .channel('users_realtime')
+    const userProfilesChannel = supabase
+      .channel('user_profiles_realtime')
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
+        { event: '*', schema: 'public', table: 'user_profiles' },
         (payload) => {
-          console.log('Usuário atualizado em tempo real:', payload);
+          console.log('Perfil de usuário atualizado em tempo real:', payload);
           
           if (payload.eventType === 'INSERT') {
-            setUsers(prev => [payload.new as ExtendedUser, ...prev]);
+            setUsers(prev => [payload.new, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
             setUsers(prev => 
               prev.map(user => 
-                user.id === payload.new.id ? payload.new as ExtendedUser : user
+                user.id === payload.new.id ? payload.new : user
               )
             );
           } else if (payload.eventType === 'DELETE') {
@@ -255,10 +247,9 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
     setIsConnected(true);
 
     return () => {
-      metricsChannel.unsubscribe();
-      alertsChannel.unsubscribe();
-      activitiesChannel.unsubscribe();
-      usersChannel.unsubscribe();
+      notificationsChannel.unsubscribe();
+      missionAttemptsChannel.unsubscribe();
+      userProfilesChannel.unsubscribe();
       presenceChannel.unsubscribe();
       setIsConnected(false);
       setConnectionStatus('disconnected');
@@ -281,7 +272,7 @@ export function useRealtimeUpdates(): UseRealtimeUpdatesReturn {
 
 // Hook específico para notificações em tempo real
 export function useRealtimeNotifications() {
-  const [notifications, setNotifications] = useState<SystemAlert[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -291,20 +282,20 @@ export function useRealtimeNotifications() {
         { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'system_alerts',
-          filter: 'severity=in.(high,critical)'
+          table: 'notifications',
+          filter: 'type=in.(warning,error)'
         },
         (payload) => {
-          const newAlert = payload.new as SystemAlert;
-          setNotifications(prev => [newAlert, ...prev.slice(0, 9)]);
+          const newNotification = payload.new;
+          setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
           setUnreadCount(prev => prev + 1);
 
           // Mostrar notificação do navegador se permitido
           if (Notification.permission === 'granted') {
-            new Notification(newAlert.title, {
-              body: newAlert.message,
+            new Notification(newNotification.title || 'Nova Notificação', {
+              body: newNotification.message || 'Você tem uma nova notificação',
               icon: '/favicon.ico',
-              tag: newAlert.id
+              tag: newNotification.id
             });
           }
         }
@@ -316,10 +307,10 @@ export function useRealtimeNotifications() {
     };
   }, []);
 
-  const markAsRead = useCallback((alertId: string) => {
+  const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev => 
       prev.map(notif => 
-        notif.id === alertId ? { ...notif, is_acknowledged: true } : notif
+        notif.id === notificationId ? { ...notif, is_read: true } : notif
       )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
