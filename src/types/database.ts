@@ -1,6 +1,6 @@
 // Tipos auxiliares para facilitar o uso
 export type User = Database['public']['Tables']['user_profiles']['Row'];
-export type UserRole = 'admin' | 'student';
+export type UserRole = 'admin' | 'instructor' | 'student' | 'editor' | 'aluno' | 'mission_architect';
 export type LessonProgress = Database['public']['Tables']['lesson_progress']['Row'];
 export type ModuleLesson = Database['public']['Tables']['module_lessons']['Row'];
 export type Course = Database['public']['Tables']['courses']['Row'];
@@ -49,7 +49,7 @@ export interface Database {
           id: string;
           email?: string;
           full_name: string;
-          role: 'admin' | 'student';
+          role: 'admin' | 'instructor' | 'student' | 'editor' | 'aluno' | 'mission_architect';
           avatar_url?: string;
           bio?: string;
           user_metadata?: any;
@@ -61,7 +61,7 @@ export interface Database {
         Insert: {
           id: string;
           full_name: string;
-          role?: 'admin' | 'instructor' | 'student';
+          role?: 'admin' | 'instructor' | 'student' | 'editor' | 'aluno' | 'mission_architect';
           avatar_url?: string;
           bio?: string;
           created_at?: string;
@@ -72,7 +72,7 @@ export interface Database {
         Update: {
           id?: string;
           full_name?: string;
-          role?: 'admin' | 'instructor' | 'student';
+          role?: 'admin' | 'instructor' | 'student' | 'editor' | 'aluno' | 'mission_architect';
           avatar_url?: string;
           bio?: string;
           created_at?: string;
@@ -386,6 +386,256 @@ export interface Database {
           created_at?: string;
         };
       };
+      trilhas: {
+        Row: {
+          id: string;
+          nome: string;
+          descricao?: string | null;
+          carreira_alvo?: string | null;
+          nivel: 'iniciante' | 'intermediario' | 'avancado';
+          tags: string[] | null;
+          capa_url?: string | null;
+          criado_por?: string | null;
+          ativo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          descricao?: string | null;
+          carreira_alvo?: string | null;
+          nivel?: 'iniciante' | 'intermediario' | 'avancado';
+          tags?: string[] | null;
+          capa_url?: string | null;
+          criado_por?: string | null;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          nome?: string;
+          descricao?: string | null;
+          carreira_alvo?: string | null;
+          nivel?: 'iniciante' | 'intermediario' | 'avancado';
+          tags?: string[] | null;
+          capa_url?: string | null;
+          criado_por?: string | null;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      missoes: {
+        Row: {
+          id: string;
+          trilha_id?: string | null;
+          titulo: string;
+          contexto?: string | null;
+          tipo: 'terminal' | 'firewall' | 'quiz' | 'cloud' | 'laboratorio' | 'desafio';
+          xp: number;
+          ativo: boolean;
+          ordem?: number | null;
+          criado_por?: string | null;
+          publicado_em?: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          trilha_id?: string | null;
+          titulo: string;
+          contexto?: string | null;
+          tipo: 'terminal' | 'firewall' | 'quiz' | 'cloud' | 'laboratorio' | 'desafio';
+          xp?: number;
+          ativo?: boolean;
+          ordem?: number | null;
+          criado_por?: string | null;
+          publicado_em?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          trilha_id?: string | null;
+          titulo?: string;
+          contexto?: string | null;
+          tipo?: 'terminal' | 'firewall' | 'quiz' | 'cloud' | 'laboratorio' | 'desafio';
+          xp?: number;
+          ativo?: boolean;
+          ordem?: number | null;
+          criado_por?: string | null;
+          publicado_em?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      perguntas: {
+        Row: {
+          id: string;
+          missao_id?: string | null;
+          trilha_id?: string | null;
+          tipo: 'alternativa' | 'aberta' | 'desafio_pratico' | 'simulado' | 'dissertativa';
+          questao: string;
+          resposta_correta?: string | null;
+          explicacao_ia?: string | null;
+          metadados: Record<string, unknown> | null;
+          ativo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          missao_id?: string | null;
+          trilha_id?: string | null;
+          tipo: 'alternativa' | 'aberta' | 'desafio_pratico' | 'simulado' | 'dissertativa';
+          questao: string;
+          resposta_correta?: string | null;
+          explicacao_ia?: string | null;
+          metadados?: Record<string, unknown> | null;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          missao_id?: string | null;
+          trilha_id?: string | null;
+          tipo?: 'alternativa' | 'aberta' | 'desafio_pratico' | 'simulado' | 'dissertativa';
+          questao?: string;
+          resposta_correta?: string | null;
+          explicacao_ia?: string | null;
+          metadados?: Record<string, unknown> | null;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      relatorios: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          missao_id?: string | null;
+          resultado_json: Record<string, unknown> | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          missao_id?: string | null;
+          resultado_json?: Record<string, unknown> | null;
+          criado_em?: string;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          missao_id?: string | null;
+          resultado_json?: Record<string, unknown> | null;
+          criado_em?: string;
+        };
+      };
+      progresso: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          trilha_id: string;
+          xp_total: number;
+          nivel: number;
+          badges_conquistadas: string[] | null;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          trilha_id: string;
+          xp_total?: number;
+          nivel?: number;
+          badges_conquistadas?: string[] | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          trilha_id?: string;
+          xp_total?: number;
+          nivel?: number;
+          badges_conquistadas?: string[] | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+      };
+      ranking: {
+        Row: {
+          id: string;
+          trilha_id: string;
+          usuario_id: string;
+          xp: number;
+          atualizado_em: string;
+        };
+        Insert: {
+          id?: string;
+          trilha_id: string;
+          usuario_id: string;
+          xp?: number;
+          atualizado_em?: string;
+        };
+        Update: {
+          id?: string;
+          trilha_id?: string;
+          usuario_id?: string;
+          xp?: number;
+          atualizado_em?: string;
+        };
+      };
+      media: {
+        Row: {
+          id: string;
+          url: string;
+          user_id?: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          url: string;
+          user_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          url?: string;
+          user_id?: string | null;
+          created_at?: string;
+        };
+      };
+      settings: {
+        Row: {
+          id: string;
+          site_name?: string | null;
+          logo_url?: string | null;
+          theme: Record<string, unknown> | null;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          site_name?: string | null;
+          logo_url?: string | null;
+          theme?: Record<string, unknown> | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          site_name?: string | null;
+          logo_url?: string | null;
+          theme?: Record<string, unknown> | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+      };
       certificates: {
         Row: {
           id: string;
@@ -429,6 +679,7 @@ export interface Database {
           course_id?: string;
           category?: string;
           share_text?: string;
+          criterio?: Record<string, unknown> | null;
           created_at: string;
         };
         Insert: {
@@ -441,6 +692,7 @@ export interface Database {
           course_id?: string;
           category?: string;
           share_text?: string;
+          criterio?: Record<string, unknown> | null;
           created_at?: string;
         };
         Update: {
@@ -453,6 +705,7 @@ export interface Database {
           course_id?: string;
           category?: string;
           share_text?: string;
+          criterio?: Record<string, unknown> | null;
           created_at?: string;
         };
       };
@@ -676,7 +929,7 @@ export interface ExtendedUser {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'instructor' | 'student';
+  role: 'admin' | 'instructor' | 'student' | 'editor' | 'aluno' | 'mission_architect';
   avatar_url?: string;
   bio?: string;
   created_at: string;
