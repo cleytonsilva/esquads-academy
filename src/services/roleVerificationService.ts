@@ -48,12 +48,24 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 const VERIFICATION_THROTTLE = 2000; // 2 segundos entre verificações (aumentado)
 const MAX_CONCURRENT_VERIFICATIONS = 2; // Reduzido para 2
 
+type VerificationQueueItem = {
+  userId: string;
+  resolve: (value: RoleVerificationResult) => void;
+  reject: (reason?: unknown) => void;
+  user?: User | null;
+};
+
 class RoleVerificationService {
+  private readonly FALLBACK_ROLE_KEY = 'role_verification_fallback';
   private cache: RoleCache = {};
   private pendingVerifications = new Map<string, Promise<RoleVerificationResult>>();
   private lastVerificationTime = new Map<string, number>();
-  private verificationQueue: Array<{ userId: string; resolve: Function; reject: Function }> = [];
+  private verificationQueue: VerificationQueueItem[] = [];
   private activeVerifications = 0;
+
+  private isStorageAvailable(): boolean {
+    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+  }
 
   // CORREÇÃO: Método para verificar se pode fazer nova verificação
   private canVerify(userId: string): boolean {
@@ -83,7 +95,8 @@ class RoleVerificationService {
 
     const next = this.verificationQueue.shift();
     if (next) {
-      this.performVerificationInternal(next.userId)
+      this.activeVerifications++;
+      this.performVerificationInternal(next.userId, next.user)
         .then(next.resolve)
         .catch(next.reject)
         .finally(() => {
@@ -119,25 +132,31 @@ class RoleVerificationService {
   // CORREÇÃO: Método para definir cache
   setCachedRole(userId: string, role: UserRole): void {
     if (!userId || !role) return;
-    
+
     this.cache[userId] = {
       role,
       timestamp: Date.now(),
       isValid: true
     };
+    this.setFallbackRole(userId, role);
     console.log(`💾 Cached role ${role} for user ${userId}`);
   }
 
   // CORREÇÃO: Verificação principal com controle de concorrência OTIMIZADO
   async verifyUserRole(user: any): Promise<RoleVerificationResult> {
-    if (!user?.id) {
+    const validation = validateUser(user);
+
+    if (!validation.isValid || !validation.userId) {
       console.log('🚫 No user ID provided');
       return {
-        role: null, isValid: false, fromCache: false, error: 'No user ID provided'
+        role: null,
+        isValid: false,
+        fromCache: false,
+        error: validation.error || 'No user ID provided'
       };
     }
 
-    const userId = user.id;
+    const userId = validation.userId;
     console.log(`🔐 verifyUserRole called`);
 
     // OTIMIZAÇÃO 1: Verificar cache primeiro - SEMPRE
@@ -162,6 +181,15 @@ class RoleVerificationService {
     if (!this.canVerify(userId)) {
       // FALLBACK: Usar role padrão quando throttled
       console.log(`🔄 Using default role due to throttle`);
+      const fallbackRole = this.getFallbackRole(userId);
+      if (fallbackRole) {
+        return {
+          role: fallbackRole,
+          isValid: true,
+          fromCache: true,
+          error: 'Verification throttled - using fallback role'
+        };
+      }
       return { role: null, isValid: false, fromCache: false, error: 'Verification throttled with no cache' };
     }
 
@@ -179,7 +207,7 @@ class RoleVerificationService {
 
   // CORREÇÃO: Verificação com fila de espera
   private async performVerificationWithQueue(userId: string, user: any): Promise<RoleVerificationResult> {
-    return new Promise((resolve, reject) => {
+    return new Promise<RoleVerificationResult>((resolve, reject) => {
       if (this.activeVerifications < MAX_CONCURRENT_VERIFICATIONS) {
         // Executar imediatamente
         this.activeVerifications++;
@@ -193,7 +221,7 @@ class RoleVerificationService {
       } else {
         // Adicionar à fila
         console.log(`📋 Adding user ${userId} to verification queue`);
-        this.verificationQueue.push({ userId, resolve, reject });
+        this.verificationQueue.push({ userId, resolve, reject, user });
       }
     });
   }
@@ -233,9 +261,19 @@ class RoleVerificationService {
 
       if (error) {
         console.error(`❌ Database error for user ${userId}:`, error);
-        
-        // FALLBACK: Usar role padrão
-        const fb = this.getFallbackRole(userId); if (fb) { this.setCachedRole(userId, fb); return { role: fb, isValid: true, fromCache: true, error: 'Database error - using fallback storage' }; } return { role: null, isValid: false, fromCache: false, error: 'Database error' };
+
+        const fallbackRole = this.getFallbackRole(userId);
+        if (fallbackRole) {
+          this.setCachedRole(userId, fallbackRole);
+          return {
+            role: fallbackRole,
+            isValid: true,
+            fromCache: true,
+            error: 'Database error - using fallback storage'
+          };
+        }
+
+        return { role: null, isValid: false, fromCache: false, error: 'Database error' };
       }
 
       if (data?.role) {
@@ -260,8 +298,24 @@ class RoleVerificationService {
 
     } catch (error) {
       console.error(`❌ Verification error for user ${userId}:`, error);
-      
-      // return { role: null, isValid: false, fromCache: false, error: (error instanceof Error ? error.message : 'Unknown verification error') };
+
+      const fallbackRole = this.getFallbackRole(userId);
+      if (fallbackRole) {
+        this.setCachedRole(userId, fallbackRole);
+        return {
+          role: fallbackRole,
+          isValid: true,
+          fromCache: true,
+          error: error instanceof Error ? error.message : 'Verification error - using fallback role'
+        };
+      }
+
+      return {
+        role: null,
+        isValid: false,
+        fromCache: false,
+        error: error instanceof Error ? error.message : 'Unknown verification error'
+      };
     }
   }
 
@@ -322,7 +376,7 @@ class RoleVerificationService {
    * Obtém a role de fallback do localStorage
    */
   private getFallbackRole(userId: string): UserRole {
-    if (!isValidUUID(userId)) {
+    if (!isValidUUID(userId) || !this.isStorageAvailable()) {
       return null;
     }
 
@@ -348,7 +402,7 @@ class RoleVerificationService {
    * Armazena a role de fallback no localStorage
    */
   private setFallbackRole(userId: string, role: UserRole): void {
-    if (!isValidUUID(userId) || !role) {
+    if (!isValidUUID(userId) || !role || !this.isStorageAvailable()) {
       return;
     }
 
